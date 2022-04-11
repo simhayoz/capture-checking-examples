@@ -36,6 +36,7 @@ class WebSocketExampleApp[F[_]](implicit F: Async[F]) extends Http4sDsl[F] {
   var messages: Vector[Message] = Vector(Message("alice", "Hello World!"), Message("bob", "I am cow, hear me moo"))
 
   case class Message(name: String, msg: String)
+
   case class Response(success: Boolean, err: String)
 
   def routes(wsb: WebSocketBuilder2[F]): HttpRoutes[F] =
@@ -81,18 +82,18 @@ class WebSocketExampleApp[F[_]](implicit F: Async[F]) extends Http4sDsl[F] {
           }
         } yield resp
 
-       case GET -> Root / "subscribe" =>
-         for {
-           newQueue: Queue[F, Option[String]] <- Queue.unbounded[F, Option[String]]
-           _ = openConnectionQueues += newQueue
-           toClient: Stream[F, WebSocketFrame] =
-             Stream.fromQueueNoneTerminated(newQueue).map(s => Text(s))
-           fromClient: Pipe[F, WebSocketFrame, Unit] = _.evalMap {
-             case Text(t, _) => F.delay(println(t))
-             case f => F.delay(println(s"Unknown type: $f"))
-           }
-           res <- wsb.build(toClient, fromClient)
-         } yield res
+      case GET -> Root / "subscribe" =>
+        for {
+          newQueue: Queue[F, Option[String]] <- Queue.unbounded[F, Option[String]]
+          _ = openConnectionQueues += newQueue
+          toClient: Stream[F, WebSocketFrame] =
+            Stream.fromQueueNoneTerminated(newQueue).map(s => Text(s))
+          fromClient: Pipe[F, WebSocketFrame, Unit] = _.evalMap {
+            case Text(t, _) => F.delay(println(t))
+            case f => F.delay(println(s"Unknown type: $f"))
+          }
+          res <- wsb.build(toClient, fromClient)
+        } yield res
     }
 
   def messageList(): Frag[Builder, String] = frag(for (u <- messages) yield p(b(u.name), " ", u.msg))
