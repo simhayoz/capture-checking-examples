@@ -10,7 +10,7 @@ lazy val root = project
 
     scalaVersion := scala3Version,
 
-//    scalacOptions ++= Seq("-Ycc"),
+    scalacOptions ++= Seq("-Ycc"),
 
     libraryDependencies ++= Seq("org.scalameta" %% "munit" % "0.7.29" % Test,
       "org.http4s" %% "http4s-dsl" % http4sVersion,
