@@ -86,18 +86,17 @@ class WebSocketExampleWithCCApp[F[_]](implicit F: Async[F]) extends Http4sDsl[F]
         } yield resp
 
       case GET -> Root / "subscribe" =>
-        for {
-          newQueue: Queue[F, Option[String]] <- Queue.unbounded[F, Option[String]]
-          _ = openConnectionQueues += newQueue
-          toClient: Stream[F, WebSocketFrame] =
+        Queue.unbounded[F, Option[String]].flatMap((newQueue: Queue[F, Option[String]]) => {
+          openConnectionQueues += newQueue
+          val toClient: Stream[F, WebSocketFrame] =
             Stream.fromQueueNoneTerminated(newQueue).map(s => Text(s))
-          fromClient: Pipe[F, WebSocketFrame, Unit] = _.evalMap {
+          val fromClient: Pipe[F, WebSocketFrame, Unit] = _.evalMap {
             case Text(t, _) => F.delay(println(t))
             case Close(_) => F.delay(openConnectionQueues -= newQueue)
             case f => F.delay(println(s"Unknown type: $f"))
           }
-          res <- wsb.build(toClient, fromClient)
-        } yield res
+          wsb.build(toClient, fromClient)
+        })
     }
 
   def messageList(): Frag[Builder, String] = frag(for (u <- messages) yield p(b(u.name), " ", u.msg))
