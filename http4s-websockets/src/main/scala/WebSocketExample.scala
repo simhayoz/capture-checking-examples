@@ -1,5 +1,6 @@
 import scalatags.Text.all.*
 import cats.effect.*
+import cats.implicits._
 import cats.effect.std.Queue
 import cats.syntax.all.*
 import org.http4s.*
@@ -34,13 +35,13 @@ object WebSocketExample extends IOApp {
 class WebSocketExampleApp[F[_]](implicit F: Async[F]) extends Http4sDsl[F] {
 
   var messages: Vector[Message] = Vector(Message("alice", "Hello World!"), Message("bob", "I am cow, hear me moo"))
+  val openConnectionQueues: ListBuffer[Queue[F, Option[String]]] = ListBuffer[Queue[F, Option[String]]]()
 
   case class Message(name: String, msg: String)
 
   case class Response(success: Boolean, err: String)
 
   def routes(wsb: WebSocketBuilder2[F]): HttpRoutes[F] =
-    val openConnectionQueues = ListBuffer[Queue[F, Option[String]]]()
     val bootstrap = "https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.css"
     HttpRoutes.of[F] {
       case request@GET -> Root / static / fileName =>
@@ -77,8 +78,10 @@ class WebSocketExampleApp[F[_]](implicit F: Async[F]) extends Http4sDsl[F] {
           else if (m.msg == "") Ok(Response(false, "Message cannot be empty").asJson)
           else {
             messages = messages :+ m
-            openConnectionQueues.foreach(s => s.offer(Some(messageList().render)))
-            Ok(Response(true, "").asJson)
+            for {
+              _ <- openConnectionQueues.map(s => s.offer(Some(messageList().render))).toList.sequence
+              res <- Ok(Response(true, "").asJson)
+            } yield res
           }
         } yield resp
 
