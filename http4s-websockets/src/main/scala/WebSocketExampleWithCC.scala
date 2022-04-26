@@ -35,7 +35,7 @@ object WebSocketExampleWithCC extends IOApp {
 class WebSocketExampleWithCCApp[F[_]](implicit F: Async[F]) extends Http4sDsl[F] {
 
   var messages: Vector[Message] = Vector(Message("alice", "Hello World!"), Message("bob", "I am cow, hear me moo"))
-  val openConnectionQueues: ListBuffer[Queue[F, Option[String]]] = ListBuffer[Queue[F, Option[String]]]()
+  val openConnectionQueues: ListBuffer[{*} Queue[F, Option[String]]] = ListBuffer[{*} Queue[F, Option[String]]]()
 
   case class Message(name: String, msg: String)
 
@@ -86,7 +86,7 @@ class WebSocketExampleWithCCApp[F[_]](implicit F: Async[F]) extends Http4sDsl[F]
         } yield resp
 
       case GET -> Root / "subscribe" =>
-        Queue.unbounded[F, Option[String]].flatMap((newQueue: Queue[F, Option[String]]) => {
+        Queue.unbounded[F, Option[String]].flatMap((newQueue: ({*} Queue[F, Option[String]])) => {
           openConnectionQueues += newQueue
           val toClient: Stream[F, WebSocketFrame] =
             Stream.fromQueueNoneTerminated(newQueue).map(s => Text(s))
