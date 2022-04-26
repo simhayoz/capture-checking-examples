@@ -3,7 +3,10 @@ import org.postgresql.ds.PGSimpleDataSource
 
 import scala.io.{BufferedSource, Source}
 
-object OriginalQueries {
+import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
+import io.getquill.*
+
+object OriginalQueriesWithCC {
   case class City(
                    id: Int,
                    name: String,
@@ -38,22 +41,23 @@ object OriginalQueries {
                               percentage: Double
                             )
 
-  @main def originalQ(): Unit = {
-    val server = EmbeddedPostgres.builder().setPort(5432).start()
+  def createDBFromFile(path: String, ctx: PostgresJdbcContext[LowerCase.type]): Unit = {
+    val src: {*} BufferedSource = Source.fromFile("world.sql")
+    ctx.executeAction(src.mkString)
+    src.close()
+  }
 
-    import io.getquill._
-    import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
+  @main def originalQWithCC(): Unit = {
+    val server = EmbeddedPostgres.builder().setPort(5432).start()
 
     val pgDataSource = new org.postgresql.ds.PGSimpleDataSource()
     pgDataSource.setUser("postgres")
     val config = new HikariConfig()
     config.setDataSource(pgDataSource)
-    val ctx = new PostgresJdbcContext(LowerCase, new HikariDataSource(config))
-    val src: BufferedSource = Source.fromFile("world.sql")
-    ctx.executeAction(src.mkString)
-    src.close()
+    val ctx = new PostgresJdbcContext(LowerCase, new HikariDataSource(config)) // : {*} PostgresJdbcContext[LowerCase.type]
+    createDBFromFile("world.sql", ctx)
 
-    import ctx._
+    import ctx.*
 
     assert(
       ctx.run(query[City].take(4)) ==
@@ -65,28 +69,28 @@ object OriginalQueries {
         )
     )
     // TODO does not work due to implicit decoder and macros
-//    assert(
-//      ctx.run(query[Country]).take(1) ==
-//        Seq(
-//          Country(
-//            "AFG",
-//            "Afghanistan",
-//            "Asia",
-//            "Southern and Central Asia",
-//            652090.0,
-//            Some(1919),
-//            22720000,
-//            Some(45.9000015),
-//            Some(5976.00),
-//            None,
-//            "Afganistan/Afqanestan",
-//            "Islamic Emirate",
-//            Some("Mohammad Omar"),
-//            Some(1),
-//            "AF"
-//          )
-//        )
-//    )
+    //    assert(
+    //      ctx.run(query[Country]).take(1) ==
+    //        Seq(
+    //          Country(
+    //            "AFG",
+    //            "Afghanistan",
+    //            "Asia",
+    //            "Southern and Central Asia",
+    //            652090.0,
+    //            Some(1919),
+    //            22720000,
+    //            Some(45.9000015),
+    //            Some(5976.00),
+    //            None,
+    //            "Afganistan/Afqanestan",
+    //            "Islamic Emirate",
+    //            Some("Mohammad Omar"),
+    //            Some(1),
+    //            "AF"
+    //          )
+    //        )
+    //    )
     assert(
       ctx.run(query[CountryLanguage].take(4)) ==
         Seq(
