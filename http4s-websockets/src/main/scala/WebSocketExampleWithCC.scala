@@ -24,7 +24,6 @@ import io.circe.Encoder.AsObject.importedAsObjectEncoder
 import io.circe.Encoder.AsRoot.importedAsRootEncoder
 import fs2.{Pipe, Stream}
 
-import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.*
 
 object WebSocketExampleWithCC extends IOApp {
@@ -33,8 +32,42 @@ object WebSocketExampleWithCC extends IOApp {
 }
 
 class WebSocketExampleWithCCApp[F[_]](implicit F: Async[F]) extends Http4sDsl[F] {
+  import colltest5.strawman.collections.*
+  import CollectionStrawMan5.*
 
-  var messages: Vector[Message] = Vector(Message("alice", "Hello World!"), Message("bob", "I am cow, hear me moo"))
+  // Really not optimized method to remove one element from a ListBuffer
+  extension [A](l: ListBuffer[A])
+    def -=(elem: A): ListBuffer[A] = {
+      val newList = ListBuffer[A]()
+      val these: Iterator[A] = l.iterator
+      while (these.hasNext) {
+        val curr = these.next()
+        if (curr != elem) {
+          newList += curr
+        }
+      }
+      newList
+    }
+    def toScalaList: scala.List[A] = {
+      var newList = scala.List[A]()
+      val these: Iterator[A] = l.iterator
+      while (these.hasNext) {
+        newList = these.next() :: newList
+      }
+      newList
+    }
+
+  extension [A](l: List[A])
+    def toScalaList: scala.List[A] = {
+      var newList = scala.List[A]()
+      val these: Iterator[A] = l.iterator
+      while (these.hasNext) {
+        newList = these.next() :: newList
+      }
+      newList
+    }
+
+  var messages: List[Message] = List(Message("alice", "Hello World!"), Message("bob", "I am cow, hear me moo"))
   val openConnectionQueues: ListBuffer[{*} Queue[F, Option[String]]] = ListBuffer[{*} Queue[F, Option[String]]]()
 
   case class Message(name: String, msg: String)
@@ -77,9 +110,9 @@ class WebSocketExampleWithCCApp[F[_]](implicit F: Async[F]) extends Http4sDsl[F]
           resp <- if (m.name == "") Ok(Response(false, "Name cannot be empty").asJson)
           else if (m.msg == "") Ok(Response(false, "Message cannot be empty").asJson)
           else {
-            messages = messages :+ m
+            messages = messages ++ List(m)
             for {
-              _ <- openConnectionQueues.map(s => s.offer(Some(messageList().render))).toList.sequence
+              _ <- openConnectionQueues.map((s: {*} Queue[F, Option[String]]) => s.offer(Some(messageList().render))).toScalaList.sequence
               res <- Ok(Response(true, "").asJson)
             } yield res
           }
@@ -99,7 +132,7 @@ class WebSocketExampleWithCCApp[F[_]](implicit F: Async[F]) extends Http4sDsl[F]
         })
     }
 
-  def messageList(): Frag[Builder, String] = frag(for (u <- messages) yield p(b(u.name), " ", u.msg))
+  def messageList(): Frag[scalatags.text.Builder, String] = frag((for (u <- messages) yield p(b(u.name), " ", u.msg)).toScalaList)
 
   def stream: Stream[F, ExitCode] =
     BlazeServerBuilder[F]
