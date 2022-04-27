@@ -67,12 +67,14 @@ class WebSocketExampleWithCCApp[F[_]](implicit F: Async[F]) extends Http4sDsl[F]
       newList
     }
 
-  var messages: List[Message] = List(Message("alice", "Hello World!"), Message("bob", "I am cow, hear me moo"))
+  var messages: List[Message] = List(Message("bob", "I am cow, hear me moo"), Message("alice", "Hello World!"))
   val openConnectionQueues: ListBuffer[{*} Queue[F, Option[String]]] = ListBuffer[{*} Queue[F, Option[String]]]()
 
   case class Message(name: String, msg: String)
 
   case class Response(success: Boolean, err: String)
+
+  def removeCapability[A](el: {*} A): A = (() => el.asInstanceOf[A])()
 
   def routes(wsb: WebSocketBuilder2[F]): HttpRoutes[F] =
     val bootstrap = "https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.css"
@@ -110,7 +112,7 @@ class WebSocketExampleWithCCApp[F[_]](implicit F: Async[F]) extends Http4sDsl[F]
           resp <- if (m.name == "") Ok(Response(false, "Name cannot be empty").asJson)
           else if (m.msg == "") Ok(Response(false, "Message cannot be empty").asJson)
           else {
-            messages = messages ++ List(m)
+            messages = List(m) ++ messages
             for {
               _ <- openConnectionQueues.map((s: {*} Queue[F, Option[String]]) => s.offer(Some(messageList().render))).toScalaList.sequence
               res <- Ok(Response(true, "").asJson)
@@ -119,8 +121,9 @@ class WebSocketExampleWithCCApp[F[_]](implicit F: Async[F]) extends Http4sDsl[F]
         } yield resp
 
       case GET -> Root / "subscribe" =>
-        Queue.unbounded[F, Option[String]].flatMap((newQueue: ({*} Queue[F, Option[String]])) => {
-          openConnectionQueues += newQueue
+        Queue.unbounded[F, Option[String]].flatMap((newQueue: Queue[F, Option[String]]) => {
+          val queueAsCapability: {*} Queue[F, Option[String]] = newQueue
+          openConnectionQueues += queueAsCapability
           val toClient: Stream[F, WebSocketFrame] =
             Stream.fromQueueNoneTerminated(newQueue).map(s => Text(s))
           val fromClient: Pipe[F, WebSocketFrame, Unit] = _.evalMap {
