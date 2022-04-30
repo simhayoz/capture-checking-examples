@@ -48,10 +48,11 @@ object OriginalQueriesWithCC {
   }
 
   @main def originalQWithCC(): Unit = {
-    val server = EmbeddedPostgres.builder().setPort(5432).start()
+    val server = EmbeddedPostgres.builder().start()
 
     val pgDataSource = new org.postgresql.ds.PGSimpleDataSource()
     pgDataSource.setUser("postgres")
+    pgDataSource.setPassword("postgres")
     val config = new HikariConfig()
     config.setDataSource(pgDataSource)
     val ctx = new PostgresJdbcContext(LowerCase, new HikariDataSource(config)) // : {*} PostgresJdbcContext[LowerCase.type]
@@ -94,10 +95,10 @@ object OriginalQueriesWithCC {
     assert(
       ctx.run(query[CountryLanguage].take(4)) ==
         Seq(
-          CountryLanguage("AFG", "Pashto", true, 52.4000015),
-          CountryLanguage("NLD", "Dutch", true, 95.5999985),
-          CountryLanguage("ANT", "Papiamento", true, 86.1999969),
-          CountryLanguage("ALB", "Albaniana", true, 97.9000015),
+          CountryLanguage("AFG", "Pashto", true, 52.4),
+          CountryLanguage("NLD", "Dutch", true, 95.6),
+          CountryLanguage("ANT", "Papiamento", true, 86.2),
+          CountryLanguage("ALB", "Albaniana", true, 97.9),
         )
     )
 

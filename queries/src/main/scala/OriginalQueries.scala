@@ -3,6 +3,10 @@ import org.postgresql.ds.PGSimpleDataSource
 
 import scala.io.{BufferedSource, Source}
 
+// psql how to run:
+// sudo -u postgres psql
+// postgres=# drop table if exists city, country, countrylanguage cascade; \i world.sql
+
 object OriginalQueries {
   case class City(
                    id: Int,
@@ -39,13 +43,14 @@ object OriginalQueries {
                             )
 
   @main def originalQ(): Unit = {
-    val server = EmbeddedPostgres.builder().setPort(5432).start()
+    val server = EmbeddedPostgres.builder().start()
 
     import io.getquill._
     import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 
     val pgDataSource = new org.postgresql.ds.PGSimpleDataSource()
     pgDataSource.setUser("postgres")
+    pgDataSource.setPassword("postgres")
     val config = new HikariConfig()
     config.setDataSource(pgDataSource)
     val ctx = new PostgresJdbcContext(LowerCase, new HikariDataSource(config))
@@ -88,12 +93,12 @@ object OriginalQueries {
 //        )
 //    )
     assert(
-      ctx.run(query[CountryLanguage].take(4)) ==
+      pprint.log(ctx.run(query[CountryLanguage].take(4))) ==
         Seq(
-          CountryLanguage("AFG", "Pashto", true, 52.4000015),
-          CountryLanguage("NLD", "Dutch", true, 95.5999985),
-          CountryLanguage("ANT", "Papiamento", true, 86.1999969),
-          CountryLanguage("ALB", "Albaniana", true, 97.9000015),
+          CountryLanguage("AFG", "Pashto", true, 52.4),
+          CountryLanguage("NLD", "Dutch", true, 95.6),
+          CountryLanguage("ANT", "Papiamento", true, 86.2),
+          CountryLanguage("ALB", "Albaniana", true, 97.9),
         )
     )
 
