@@ -36,149 +36,6 @@ object QueriesWithCC {
                               percentage: Double
                             )
 
-
-
-  extension (c: Connection) // TODO probably remove execute at some point
-    def execute[A](q: Connection => A): A = q(c)
-    def run[A](q: Query[A]): Seq[A] = q.qry.get(c)
-
-  class Query[A](tableName: String, fromResultSet: ResultSet => A, columns: List[String], toPreparedStatement: (A, PreparedStatement, Int) => Unit) {
-    var qry: Option[Connection => Seq[A]] = None
-
-    def take(n: Int): Query[A] = {
-      if(qry.isDefined) {
-        qry = Some(ctx => ctx.execute(qry.get).take(n))
-      } else {
-        qry = Some(ctx => {
-          val stmt: PreparedStatement = ctx.prepareStatement(s"SELECT * FROM $tableName LIMIT ?")
-          stmt.setInt(1, n)
-          val rs: ResultSet = stmt.executeQuery()
-          var finalSeq: Seq[A] = Seq()
-          while (rs.next()) {
-            finalSeq = finalSeq :+ fromResultSet(rs)
-          }
-          finalSeq
-        })
-      }
-      this
-    }
-
-    def filter(pred: A => Boolean): Query[A] = {
-      if(qry.isDefined) {
-        qry = Some(ctx => ctx.execute(qry.get).filter(pred))
-      } else {
-        qry = Some(ctx => {
-          val stmt: PreparedStatement = ctx.prepareStatement(s"SELECT * FROM $tableName")
-          val rs: ResultSet = stmt.executeQuery()
-          var finalSeq: Seq[A] = Seq()
-          while (rs.next()) {
-            val newValue = fromResultSet(rs)
-            if (pred(newValue))
-              finalSeq = finalSeq :+ fromResultSet(rs)
-          }
-          finalSeq
-        })
-      }
-      this
-    }
-
-    def updateValue(value: A): Connection => Int = {
-      if(qry.isDefined) {
-        return ctx => {
-          val prev = ctx.execute(qry.get).head
-          val stmt: PreparedStatement = ctx.prepareStatement(s"UPDATE $tableName SET ${columns.map(_ + " = ?").mkString(", ")} WHERE ${columns.map(_ + " = ?").mkString(", ")}")
-          toPreparedStatement(value, stmt, 0)
-          toPreparedStatement(prev, stmt, columns.length)
-          stmt.executeUpdate()
-        }
-      }
-      throw RuntimeException("Nothing to update")
-    }
-
-    def update[B](updateTuple: ((A => B), B)): Connection => Int = {
-      if(qry.isDefined) {
-        return ctx => {
-          val prev = ctx.execute(qry.get).head
-          val stmt: PreparedStatement = ctx.prepareStatement(s"UPDATE $tableName SET ${columns.map(_ + " = ?").mkString(", ")} WHERE ${columns.map(_ + " = ?").mkString(", ")}")
-          val value = prev
-//          updateTuple._1(value) = updateTuple._2 // TODO fix this
-          toPreparedStatement(value, stmt, 0)
-          toPreparedStatement(prev, stmt, columns.length)
-          stmt.executeUpdate()
-        }
-      }
-      throw RuntimeException("Nothing to update")
-    }
-
-    def map[B](f: A => B): Connection => Seq[B] = {
-      if(qry.isDefined) {
-        return ctx => ctx.execute(qry.get).map(f)
-      }
-      _ => Seq()
-    }
-
-    def insertValue(value: A): Connection => Int = ctx => {
-      val stmt: PreparedStatement = ctx.prepareStatement(s"INSERT INTO $tableName (${columns.mkString(", ")}) VALUES(${columns.map(_ => "?").mkString(", ")})")
-      toPreparedStatement(value, stmt, 0)
-      stmt.executeUpdate()
-    }
-  }
-
-  case class CityQuery() extends Query[City]("city", rs => {
-    City(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getInt(5))
-  }, List("id", "name", "countrycode", "district", "population"), (c, stmt, i) => {
-    stmt.setInt(1 + i, c.id)
-    stmt.setString(2 + i, c.name)
-    stmt.setString(3 + i, c.countryCode)
-    stmt.setString(4 + i, c.district)
-    stmt.setInt(5 + i, c.population)
-  })
-  def queryCity: Query[City] = CityQuery()
-
-  extension (rs: ResultSet)
-    def getOptional[A](f: ResultSet => A): Option[A] =
-      val vl = f(rs)
-      if(rs.wasNull()) {
-        None
-      } else {
-        Some(vl)
-      }
-
-  case class CountryQuery() extends Query[Country]("country", rs => {
-  val indepYear = rs.getInt(6)
-    Country(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getDouble(5),
-      rs.getOptional(_.getInt(6)), rs.getInt(7), rs.getOptional(_.getDouble(8)), rs.getOptional(_.getBigDecimal(9)),
-      rs.getOptional(_.getBigDecimal(10)), rs.getString(11), rs.getString(12), rs.getOptional(_.getString(13)), rs.getOptional(_.getInt(14)), rs.getString(15))
-  }, List("code", "name", "continent", "region", "surfacearea", "indepyear", "population", "lifeexpectancy",
-    "gnp", "gnpold", "localname", "governmentform", "headofstate", "capital", "code2"), (c, stmt, i) => {
-  stmt.setString(1 + i, c.code)
-  stmt.setString(2 + i, c.name)
-  stmt.setString(3 + i, c.continent)
-  stmt.setString(4 + i, c.region)
-  stmt.setDouble(5 + i, c.surfaceArea)
-  if(c.indepYear.isDefined) stmt.setInt(6 + i, c.indepYear.get) else stmt.setNull(6 + i, Types.INTEGER)
-  stmt.setDouble(7 + i, c.population)
-  if(c.lifeExpectancy.isDefined) stmt.setDouble(8 + i, c.lifeExpectancy.get) else stmt.setNull(8 + i, Types.DOUBLE)
-  if(c.gnp.isDefined) stmt.setBigDecimal(9 + i, c.gnp.get.bigDecimal) else stmt.setNull(9 + i, Types.BIGINT)
-  if(c.gnpold.isDefined) stmt.setBigDecimal(10 + i, c.gnpold.get.bigDecimal) else stmt.setNull(10 + i, Types.BIGINT)
-  stmt.setString(11 + i, c.localName)
-  stmt.setString(12 + i, c.governmentForm)
-  if(c.headOfState.isDefined) stmt.setString(13 + i, c.headOfState.get) else stmt.setNull(13 + i, Types.VARCHAR)
-  if(c.capital.isDefined) stmt.setInt(14 + i, c.capital.get) else stmt.setNull(14 + i, Types.INTEGER)
-  stmt.setString(15 + i, c.code2)
-  })
-  def queryCountry: Query[Country] = CountryQuery()
-
-  case class CountryLanguageQuery() extends Query[CountryLanguage]("countrylanguage", rs => {
-    CountryLanguage(rs.getString(1), rs.getString(2), rs.getBoolean(3), rs.getDouble(4))
-  }, List("countrycode", "language", "isofficial", "percentage"), (c, stmt, i) => {
-    stmt.setString(1 + i, c.countrycode)
-    stmt.setString(2 + i, c.language)
-    stmt.setBoolean(3 + i, c.isOfficial)
-    stmt.setDouble(4 + i, c.percentage)
-  })
-  def queryCountryLanguage: Query[CountryLanguage] = CountryLanguageQuery()
-
 //  implicit val ct: City = City(-1, "", "", "", -1)
 //  implicit val cty: Country = Country("", "", "", "", 0.0, None, 0, None, None, None, "", "", None, None, "")
 //  implicit val ctyl: CountryLanguage = CountryLanguage("", "", false, 0.0)
@@ -202,6 +59,9 @@ object QueriesWithCC {
   }
 
   @main def qsWithCC(): Unit = {
+    // Load driver
+    classOf[org.postgresql.Driver].getDeclaredConstructor().newInstance()
+
     val url = "jdbc:postgresql://localhost:5432/postgres"
     val user = "postgres"
     val password = "postgres"
@@ -222,7 +82,7 @@ object QueriesWithCC {
         )
     )
     assert(
-      ctx.run(queryCountry).take(1) ==
+      ctx.run(queryCountry.take(1)) ==
         Seq(
           Country(
             "AFG",
@@ -232,7 +92,7 @@ object QueriesWithCC {
             652090.0,
             Some(1919),
             22720000,
-            Some(45.9000015),
+            Some(45.9),
             Some(5976.00),
             None,
             "Afganistan/Afqanestan",
@@ -292,24 +152,23 @@ object QueriesWithCC {
     assert(pprint.log(find(3208)) == List(City(3208, "Singapore", "SGP", "\u0096", 4017733)))
     assert(pprint.log(find(3209)) == List(City(3209, "Bratislava", "SVK", "Bratislava", 448292)))
 
-    def findName(cityId: Int) = ctx.execute(queryCity.filter(_.id == cityId).map(_.name))
+    def findName(cityId: Int) = ctx.run(queryCity.filter(_.id == cityId).map(_.name))
 
     assert(pprint.log(findName(3208)) == List("Singapore"))
     assert(pprint.log(findName(3209)) == List("Bratislava"))
 
     println("Inserting Test City...")
-    ctx.execute(queryCity.insertValue(City(10000, "test", "TST", "Test County", 0)))
+    ctx.run(queryCity.insertValue(City(10000, "test", "TST", "Test County", 0)))
 
     val testCityInfo = ctx.run(queryCity.filter(_.population == 0))
     assert(pprint.log(testCityInfo) == List(City(10000, "test", "TST", "Test County", 0)))
 
     println("Inserting More Test Cities...")
-
     List(
       City(10001, "testville", "TSV", "Test County", 0),
       City(10002, "testopolis", "TSO", "Test County", 0),
       City(10003, "testberg", "TSB", "Test County", 0)
-    ).foreach(e => ctx.execute(queryCity.insertValue(e))) // TODO extract the execute to the outside
+    ).foreach(e => ctx.run(queryCity.insertValue(e))) // TODO extract the execute to the outside
 
     val allTestCities = ctx.run(queryCity.filter(_.population == 0))
     assert(
@@ -323,19 +182,19 @@ object QueriesWithCC {
     )
 
     println("Updating testham City Info")
-    ctx.execute(queryCity.filter(_.id == 10000).updateValue(City(10000, "testham", "TST", "Test County", 0)))
+    ctx.run(queryCity.filter(_.id == 10000).updateValue(City(10000, "testham", "TST", "Test County", 0)))
 
     val testhamCityInfo = ctx.run(queryCity.filter(_.id == 10000))
     assert(pprint.log(testhamCityInfo) == List(City(10000, "testham", "TST", "Test County", 0)))
 
     println("Updating testford City Info")
-    ctx.execute(queryCity.filter(_.id == 10000).update[String]((_.name, "testford")))
+    ctx.run(queryCity.filter(_.id == 10000).update("name" -> "testford"))
 
     val testfordCityInfo = ctx.run(queryCity.filter(_.id == 10000))
     assert(pprint.log(testfordCityInfo) == List(City(10000, "testford", "TST", "Test County", 0)))
 
     println("Updating all Test County Cities...")
-    ctx.execute(queryCity.filter(_.district == "Test County").update[String]((_.district, "Test Borough")))
+    ctx.run(queryCity.filter(_.district == "Test County").update("district" -> "Test Borough"))
 
     val updatedTestCountyCitiesInfo = ctx.run(queryCity.filter(_.population == 0))
     assert(

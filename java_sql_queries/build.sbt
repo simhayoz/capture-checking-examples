@@ -6,10 +6,12 @@ lazy val root = project
     name := "java_sql_queries",
     version := "0.1.0-SNAPSHOT",
 
-    scalacOptions ++= Seq("-Ycc"),
+//    scalacOptions ++= Seq("-Ycc"),
 
     scalaVersion := scala3Version,
 
     libraryDependencies ++= Seq("org.scalameta" %% "munit" % "0.7.29" % Test,
-      "com.lihaoyi" %% "pprint" % "0.7.3")
+      "com.lihaoyi" %% "pprint" % "0.7.3",
+      "org.postgresql" % "postgresql" % "42.3.4"
+    )
   )
