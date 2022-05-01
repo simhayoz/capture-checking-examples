@@ -6,7 +6,7 @@ lazy val root = project
     name := "java_sql_queries",
     version := "0.1.0-SNAPSHOT",
 
-//    scalacOptions ++= Seq("-Ycc"),
+    scalacOptions ++= Seq("-Ycc"),
 
     scalaVersion := scala3Version,
 
