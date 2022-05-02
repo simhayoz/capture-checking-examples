@@ -61,7 +61,7 @@ object QueriesWithCC {
     createDBFromFile("world.sql", ctx)
 
     assert(
-      ctx.run(query[City].take(4)) ==
+      pprint.log(ctx.run[City, Seq[City]](query[City].take(4))) ==
         Seq(
           City(1, "Kabul", "AFG", "Kabol", 1780000),
           City(2, "Qandahar", "AFG", "Qandahar", 237500),
