@@ -36,23 +36,11 @@ object QueriesWithCC {
                               percentage: Double
                             )
 
-//  implicit val ct: City = City(-1, "", "", "", -1)
-//  implicit val cty: Country = Country("", "", "", "", 0.0, None, 0, None, None, None, "", "", None, None, "")
-//  implicit val ctyl: CountryLanguage = CountryLanguage("", "", false, 0.0)
-//
-//  def query[A](implicit el: A):  <: A = el match {
-//    case _: City => CityQuery
-//
-//    case _: Country => ???
-//
-//    case _: CountryLanguage =>
-//  }
-
-  def executeQuery(query: String, ctx: Connection): Int = {
+  def executeQuery(query: String, ctx: {*} Connection): Int = {
     ctx.prepareStatement(query).executeUpdate()
   }
 
-  def createDBFromFile(path: String, ctx: Connection): Unit = {
+  def createDBFromFile(path: String, ctx: {*} Connection): Unit = {
     val src: {*} BufferedSource = Source.fromFile(path)
     executeQuery(src.mkString, ctx)
     src.close()
@@ -65,7 +53,7 @@ object QueriesWithCC {
     val url = "jdbc:postgresql://localhost:5432/postgres"
     val user = "postgres"
     val password = "postgres"
-    val ctx: Connection = try {
+    val ctx: {*} Connection = try {
       DriverManager.getConnection(url, user, password)
     } catch {
       case e: SQLException => throw RuntimeException(e.getMessage)
@@ -164,11 +152,13 @@ object QueriesWithCC {
     assert(pprint.log(testCityInfo) == List(City(10000, "test", "TST", "Test County", 0)))
 
     println("Inserting More Test Cities...")
-    List(
-      City(10001, "testville", "TSV", "Test County", 0),
-      City(10002, "testopolis", "TSO", "Test County", 0),
-      City(10003, "testberg", "TSB", "Test County", 0)
-    ).foreach(e => ctx.run(query[City].insertValue(e))) // TODO extract the execute to the outside
+    ctx.run(
+      liftQuery(List(
+        City(10001, "testville", "TSV", "Test County", 0),
+        City(10002, "testopolis", "TSO", "Test County", 0),
+        City(10003, "testberg", "TSB", "Test County", 0)
+      ).map(e => query[City].insertValue(e)))
+    )
 
     val allTestCities = ctx.run(query[City].filter(_.population == 0))
     assert(

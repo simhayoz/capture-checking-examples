@@ -3,14 +3,14 @@ import QueriesWithCC.{City, Country, CountryLanguage}
 import java.sql.{Connection, PreparedStatement, ResultSet, Types}
 import scala.reflect.ClassTag
 
-extension (c: Connection)
+extension (c: {*} Connection)
 /**
  * Run a query
  *
  * @param q the query to run
  * @return a sequence of element of type A
  */
-  def run[A, B](q: {*} SQLQuery[A, B] ): B = q.run (c)
+  def run[A, B](q: {*} SQLQuery[A, B] ): B = q.run(c)
 
 case class DataTable[A](tableName: String, fromResultSet: ResultSet => A, columns: List[String], toPreparedStatement: (A, PreparedStatement, Int) => Unit)
 
@@ -28,7 +28,9 @@ abstract class SQLQuery[A, B](dataTable: DataTable[A]) {
    * @param ctx the connection to run the query from
    * @return a sequence of element of type A
    */
-  def run(ctx: Connection): B
+  def run(ctx: {*} Connection): B
+
+  def getDataTable: DataTable[A] = dataTable
 }
 
 /**
@@ -118,15 +120,15 @@ abstract class NonPipelinedQuery[A](dataTable: DataTable[A]) extends SQLQuery[A,
  * @tparam A the type of the element in this Query
  */
 case class DataTableQuery[A](dataTable: DataTable[A]) extends NonPipelinedQuery[A](dataTable) {
-  override def run(ctx: Connection): Seq[A] = ???
+  override def run(ctx: {*} Connection): Seq[A] = ???
 }
 
 case class FilterQuery[A](pred: A => Boolean, prev: {*} PipelinedQuery[A], dataTable: DataTable[A]) extends PipelinedQuery[A](dataTable: DataTable[A]) {
-  override def run(ctx: Connection): Seq[A] = prev.run(ctx).filter(pred)
+  override def run(ctx: {*} Connection): Seq[A] = prev.run(ctx).filter(pred)
 }
 
 case class FilterQueryFromDataTable[A](pred: A => Boolean, dataTable: DataTable[A]) extends PipelinedQuery[A](dataTable) {
-  override def run(ctx: Connection): Seq[A] = {
+  override def run(ctx: {*} Connection): Seq[A] = {
     val stmt: PreparedStatement = ctx.prepareStatement(s"SELECT * FROM ${dataTable.tableName}")
     val rs: ResultSet = stmt.executeQuery()
     var finalSeq: Seq[A] = Seq()
@@ -140,11 +142,11 @@ case class FilterQueryFromDataTable[A](pred: A => Boolean, dataTable: DataTable[
 }
 
 case class TakeQuery[A](n: Int, prev: {*} PipelinedQuery[A], dataTable: DataTable[A]) extends PipelinedQuery[A](dataTable) {
-  override def run(ctx: Connection): Seq[A] = prev.run(ctx).take(n)
+  override def run(ctx: {*} Connection): Seq[A] = prev.run(ctx).take(n)
 }
 
 case class TakeQueryFromDataTable[A](n: Int, dataTable: DataTable[A]) extends PipelinedQuery[A](dataTable) {
-  override def run(ctx: Connection): Seq[A] = {
+  override def run(ctx: {*} Connection): Seq[A] = {
     val stmt: PreparedStatement = ctx.prepareStatement(s"SELECT * FROM ${dataTable.tableName} LIMIT ?")
     stmt.setInt(1, n)
     val rs: ResultSet = stmt.executeQuery()
@@ -157,34 +159,40 @@ case class TakeQueryFromDataTable[A](n: Int, dataTable: DataTable[A]) extends Pi
 }
 
 case class UpdateValueQuery[A](value: A, prev: {*} PipelinedQuery[A], dataTable: DataTable[A]) extends SQLQuery[A, Int](dataTable) {
-  override def run(ctx: Connection): Int = prev.run(ctx).map(p => {
+  override def run(ctx: {*} Connection): Int = prev.run(ctx).map(p => {
     val stmt: PreparedStatement = ctx.prepareStatement(s"UPDATE ${dataTable.tableName} SET ${dataTable.columns.map(_ + " = ?").mkString(", ")} WHERE ${dataTable.columns.map(_ + " = ?").mkString(" AND ")}")
     dataTable.toPreparedStatement(value, stmt, 0)
     dataTable.toPreparedStatement(p, stmt, dataTable.columns.length)
     stmt.executeUpdate()
-  }).head // TODO use list of query to query of list
+  }).foldLeft(0)(_ + _)
 }
 
 case class UpdateQuery[A](updateTuple: (String, String), prev: {*} PipelinedQuery[A], dataTable: DataTable[A]) extends SQLQuery[A, Int](dataTable) {
-  override def run(ctx: Connection): Int = prev.run(ctx).map(p => {
+  override def run(ctx: {*} Connection): Int = prev.run(ctx).map(p => {
     val stmt: PreparedStatement = ctx.prepareStatement(s"UPDATE ${dataTable.tableName} SET ${updateTuple._1} = ? WHERE ${dataTable.columns.map(_ + " = ?").mkString(" AND ")}")
     stmt.setString(1, updateTuple._2)
     dataTable.toPreparedStatement(p, stmt, 1)
     stmt.executeUpdate()
-  }).head // TODO use list of query to query of list
+  }).foldLeft(0)(_ + _)
 }
 
 case class MapQuery[A, B](f: A => B, prev: {*} PipelinedQuery[A], dataTable: DataTable[A]) extends SQLQuery[A, Seq[B]](dataTable) {
-  override def run(ctx: Connection): Seq[B] = prev.run(ctx).map(f)
+  override def run(ctx: {*} Connection): Seq[B] = prev.run(ctx).map(f)
 }
 
 case class InsertValueQuery[A](value: A, dataTable: DataTable[A]) extends SQLQuery[A, Int](dataTable) {
-  override def run(ctx: Connection): Int = {
+  override def run(ctx: {*} Connection): Int = {
     val stmt: PreparedStatement = ctx.prepareStatement(s"INSERT INTO ${dataTable.tableName} (${dataTable.columns.mkString(", ")}) VALUES(${dataTable.columns.map(_ => "?").mkString(", ")})")
     dataTable.toPreparedStatement(value, stmt, 0)
     stmt.executeUpdate()
   }
 }
+
+case class ListQuery[A, B](queries: List[SQLQuery[A, B]]) extends SQLQuery[A, List[B]](queries.head.getDataTable) {
+  override def run(ctx: {*} Connection): List[B] = queries.map(q => q.run(ctx))
+}
+
+def liftQuery[A, B](queries: List[SQLQuery[A, B]]): ListQuery[A, B] = ListQuery(queries)
 
 val City_ : Class[City] = classOf[City]
 val Country_ : Class[Country] = classOf[Country]
@@ -200,6 +208,12 @@ extension (rs: ResultSet)
     }
 
 // TODO if enough time generic case class to dataTable: val fields = ev.runtimeClass.getDeclaredFields.map(e => (e.getName.toLowerCase, e.getType)).toList
+/**
+ * Create a new default query from generic type A
+ *
+ * @tparam A the type of the query
+ * @return a new DataTableQuery of type A
+ */
 def query[A](implicit ev: ClassTag[A]): DataTableQuery[A] = (ev.runtimeClass match {
   case City_ => DataTableQuery[City](DataTable("city", rs => {
     City(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getInt(5))
