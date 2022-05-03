@@ -2,6 +2,25 @@ import QueriesWithCC.{City, Country, CountryLanguage}
 
 import java.sql.{Connection, PreparedStatement, ResultSet, Types}
 import scala.reflect.ClassTag
+import colltest5.strawman.collections.*
+import CollectionStrawMan5.*
+
+import scala.collection.mutable
+
+extension [A](l: List[A])
+  def mkString(sep: String): String =
+    l.tail.foldLeft(new mutable.StringBuilder().append(l.head))(_.append(sep).append(_)).toString
+
+  def take(n: Int): List[A] = {
+    val these: Iterator[A] = l.iterator
+    val newList = ListBuffer[A]()
+    var i = 0
+    while (these.hasNext && i < n) {
+      newList += these.next()
+      i += 1
+    }
+    List.fromIterable(newList)
+  }
 
 extension (c: {*} Connection)
 /**
@@ -39,7 +58,7 @@ abstract class SQLQuery[A, B](dataTable: DataTable[A]) {
  * @param dataTable the dataTable containing all information for retrieving and pushing data to the underlying DB
  * @tparam A the type of the element in this Query
  */
-abstract class PipelinedQuery[A](dataTable: DataTable[A]) extends SQLQuery[A, Seq[A]](dataTable) {
+abstract class PipelinedQuery[A](dataTable: DataTable[A]) extends SQLQuery[A, List[A]](dataTable) {
   this: {*} PipelinedQuery[A] =>
 
   /**
@@ -80,7 +99,7 @@ abstract class PipelinedQuery[A](dataTable: DataTable[A]) extends SQLQuery[A, Se
    * @param f the transform function
    * @return a new query, pipelined from the current one
    */
-  def map[B](f: A => B): {f, this} SQLQuery[A, Seq[B]] = MapQuery(f, this, dataTable)
+  def map[B](f: A => B): {f, this} SQLQuery[A, List[B]] = MapQuery(f, this, dataTable)
 }
 
 /**
@@ -88,7 +107,7 @@ abstract class PipelinedQuery[A](dataTable: DataTable[A]) extends SQLQuery[A, Se
  * @param dataTable the dataTable containing all information for retrieving and pushing data to the underlying DB
  * @tparam A the type of the element in this Query
  */
-abstract class NonPipelinedQuery[A](dataTable: DataTable[A]) extends SQLQuery[A, Seq[A]](dataTable) {
+abstract class NonPipelinedQuery[A](dataTable: DataTable[A]) extends SQLQuery[A, List[A]](dataTable) {
   /**
    * Create a new take query taking n elements from the underlying DB
    *
@@ -120,41 +139,41 @@ abstract class NonPipelinedQuery[A](dataTable: DataTable[A]) extends SQLQuery[A,
  * @tparam A the type of the element in this Query
  */
 case class DataTableQuery[A](dataTable: DataTable[A]) extends NonPipelinedQuery[A](dataTable) {
-  override def run(ctx: {*} Connection): Seq[A] = ???
+  override def run(ctx: {*} Connection): List[A] = ???
 }
 
 case class FilterQuery[A](pred: A => Boolean, prev: {*} PipelinedQuery[A], dataTable: DataTable[A]) extends PipelinedQuery[A](dataTable: DataTable[A]) {
-  override def run(ctx: {*} Connection): Seq[A] = prev.run(ctx).filter(pred)
+  override def run(ctx: {*} Connection): List[A] = prev.run(ctx).filter(pred)
 }
 
 case class FilterQueryFromDataTable[A](pred: A => Boolean, dataTable: DataTable[A]) extends PipelinedQuery[A](dataTable) {
-  override def run(ctx: {*} Connection): Seq[A] = {
+  override def run(ctx: {*} Connection): List[A] = {
     val stmt: PreparedStatement = ctx.prepareStatement(s"SELECT * FROM ${dataTable.tableName}")
     val rs: ResultSet = stmt.executeQuery()
-    var finalSeq: Seq[A] = Seq()
+    val finalBuffer: ListBuffer[A] = ListBuffer[A]()
     while (rs.next()) {
       val newValue = dataTable.fromResultSet(rs)
       if (pred(newValue))
-        finalSeq = finalSeq :+ dataTable.fromResultSet(rs)
+        finalBuffer += dataTable.fromResultSet(rs)
     }
-    finalSeq
+    List.fromIterable(finalBuffer)
   }
 }
 
 case class TakeQuery[A](n: Int, prev: {*} PipelinedQuery[A], dataTable: DataTable[A]) extends PipelinedQuery[A](dataTable) {
-  override def run(ctx: {*} Connection): Seq[A] = prev.run(ctx).take(n)
+  override def run(ctx: {*} Connection): List[A] = prev.run(ctx).take(n)
 }
 
 case class TakeQueryFromDataTable[A](n: Int, dataTable: DataTable[A]) extends PipelinedQuery[A](dataTable) {
-  override def run(ctx: {*} Connection): Seq[A] = {
+  override def run(ctx: {*} Connection): List[A] = {
     val stmt: PreparedStatement = ctx.prepareStatement(s"SELECT * FROM ${dataTable.tableName} LIMIT ?")
     stmt.setInt(1, n)
     val rs: ResultSet = stmt.executeQuery()
-    var finalSeq: Seq[A] = Seq()
+    val finalBuffer: ListBuffer[A] = ListBuffer[A]()
     while (rs.next()) {
-      finalSeq = finalSeq :+ dataTable.fromResultSet(rs)
+      finalBuffer += dataTable.fromResultSet(rs)
     }
-    finalSeq
+    List.fromIterable(finalBuffer)
   }
 }
 
@@ -176,8 +195,8 @@ case class UpdateQuery[A](updateTuple: (String, String), prev: {*} PipelinedQuer
   }).foldLeft(0)(_ + _)
 }
 
-case class MapQuery[A, B](f: A => B, prev: {*} PipelinedQuery[A], dataTable: DataTable[A]) extends SQLQuery[A, Seq[B]](dataTable) {
-  override def run(ctx: {*} Connection): Seq[B] = prev.run(ctx).map(f)
+case class MapQuery[A, B](f: A => B, prev: {*} PipelinedQuery[A], dataTable: DataTable[A]) extends SQLQuery[A, List[B]](dataTable) {
+  override def run(ctx: {*} Connection): List[B] = prev.run(ctx).map(f)
 }
 
 case class InsertValueQuery[A](value: A, dataTable: DataTable[A]) extends SQLQuery[A, Int](dataTable) {

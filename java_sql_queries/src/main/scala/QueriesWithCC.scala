@@ -2,6 +2,9 @@ import java.sql.{Connection, DriverManager, PreparedStatement, ResultSet, SQLExc
 import scala.io.{BufferedSource, Source}
 
 object QueriesWithCC {
+  import colltest5.strawman.collections.*
+  import CollectionStrawMan5.*
+
   case class City(
                    id: Int,
                    name: String,
@@ -61,8 +64,8 @@ object QueriesWithCC {
     createDBFromFile("world.sql", ctx)
 
     assert(
-      pprint.log(ctx.run[City, Seq[City]](query[City].take(4))) ==
-        Seq(
+      pprint.log(ctx.run[City, List[City]](query[City].take(4))) ==
+        List(
           City(1, "Kabul", "AFG", "Kabol", 1780000),
           City(2, "Qandahar", "AFG", "Qandahar", 237500),
           City(3, "Herat", "AFG", "Herat", 186800),
@@ -71,7 +74,7 @@ object QueriesWithCC {
     )
     assert(
       ctx.run(query[Country].take(1)) ==
-        Seq(
+        List(
           Country(
             "AFG",
             "Afghanistan",
@@ -93,7 +96,7 @@ object QueriesWithCC {
     )
     assert(
       ctx.run(query[CountryLanguage].take(4)) ==
-        Seq(
+        List(
           CountryLanguage("AFG", "Pashto", true, 52.4),
           CountryLanguage("NLD", "Dutch", true, 95.6),
           CountryLanguage("ANT", "Papiamento", true, 86.2),
