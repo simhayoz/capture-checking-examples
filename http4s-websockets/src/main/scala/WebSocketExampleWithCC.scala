@@ -1,6 +1,6 @@
 import scalatags.Text.all.*
 import cats.effect.*
-import cats.implicits._
+import cats.implicits.*
 import cats.effect.std.Queue
 import cats.syntax.all.*
 import org.http4s.*
@@ -35,8 +35,8 @@ class WebSocketExampleWithCCApp[F[_]](implicit F: Async[F]) extends Http4sDsl[F]
   import colltest5.strawman.collections.*
   import CollectionStrawMan5.*
 
-  // Really not optimized method to remove one element from a ListBuffer
   extension [A](l: ListBuffer[A])
+    // Really not optimized method to remove one element from a ListBuffer
     def -=(elem: A): ListBuffer[A] = {
       val newList = ListBuffer[A]()
       val these: Iterator[A] = l.iterator
@@ -74,7 +74,8 @@ class WebSocketExampleWithCCApp[F[_]](implicit F: Async[F]) extends Http4sDsl[F]
 
   case class Response(success: Boolean, err: String)
 
-  def removeCapability[A](el: {*} A): A = (() => el.asInstanceOf[A])()
+  // Not working
+  def removeCapability[A](el: {*} A): A = el.asInstanceOf[A]
 
   def routes(wsb: WebSocketBuilder2[F]): HttpRoutes[F] =
     val bootstrap = "https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.css"
