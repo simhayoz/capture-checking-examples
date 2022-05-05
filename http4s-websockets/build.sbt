@@ -1,4 +1,4 @@
-val scala3Version = "3.1.3-RC1-bin-SNAPSHOT"
+val scala3Version = "3.2.0-RC1-bin-SNAPSHOT"
 
 val http4sVersion = "0.23.11"
 
