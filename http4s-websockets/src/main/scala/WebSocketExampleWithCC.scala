@@ -67,8 +67,9 @@ class WebSocketExampleWithCCApp[F[_]](implicit F: Async[F]) extends Http4sDsl[F]
       newList
     }
 
+
   var messages: List[Message] = List(Message("bob", "I am cow, hear me moo"), Message("alice", "Hello World!"))
-  val openConnectionQueues: ListBuffer[{*} Queue[F, Option[String]]] = ListBuffer[{*} Queue[F, Option[String]]]()
+
 
   case class Message(name: String, msg: String)
 
@@ -78,6 +79,8 @@ class WebSocketExampleWithCCApp[F[_]](implicit F: Async[F]) extends Http4sDsl[F]
   def removeCapability[A](el: {*} A): A = el.asInstanceOf[A]
 
   def routes(wsb: WebSocketBuilder2[F]): HttpRoutes[F] =
+    val queueCapability: {*} Queue[F, Option[String]] = null
+    val openConnectionQueues: ListBuffer[{queueCapability} Queue[F, Option[String]]] = ListBuffer[{queueCapability} Queue[F, Option[String]]]()
     val bootstrap = "https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.css"
     HttpRoutes.of[F] {
       case request@GET -> Root / static / fileName =>
@@ -123,7 +126,7 @@ class WebSocketExampleWithCCApp[F[_]](implicit F: Async[F]) extends Http4sDsl[F]
 
       case GET -> Root / "subscribe" =>
         Queue.unbounded[F, Option[String]].flatMap((newQueue: Queue[F, Option[String]]) => {
-          val queueAsCapability: {*} Queue[F, Option[String]] = newQueue
+          val queueAsCapability: {queueCapability} Queue[F, Option[String]] = newQueue
           openConnectionQueues += queueAsCapability
           val toClient: Stream[F, WebSocketFrame] =
             Stream.fromQueueNoneTerminated(newQueue).map(s => Text(s))
