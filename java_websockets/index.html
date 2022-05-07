@@ -1,0 +1,8 @@
+<script>
+  var socket = new WebSocket("ws://localhost:2000");
+  socket.onmessage = function (ev) { console.log(ev);
+  socket.close(); }
+  socket.onopen = function(evt) {
+    socket.send("abcdef")
+  }
+</script>
