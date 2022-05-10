@@ -7,7 +7,6 @@ import websocket.ContentType.*
 object WebSocketExampleWithCC extends IOApp {
   override def run(args: List[String]): Int =
     new WebSocketExampleWithCCApp().stream.last
-//
 }
 
 class WebSocketExampleWithCCApp extends Dsl {
@@ -49,6 +48,12 @@ class WebSocketExampleWithCCApp extends Dsl {
   var messages: List[Message] = List(Message("bob", "I am cow, hear me moo"), Message("alice", "Hello World!"))
 
   case class Message(name: String, msg: String)
+  implicit val messageTranslation: String => Message = s => {
+    s.split(',') match {
+      case Array(namePart, msgPart) => Message(namePart.substring(9, namePart.length-1), msgPart.substring(7, msgPart.length-2))
+      case _ => throw new RuntimeException("Cannot parse message")
+    }
+  }
   case class Response(success: Boolean, err: String) {
     def asJson: String =
       f"{\"success\": $success, \"err\": \"$err\"}"
@@ -86,7 +91,7 @@ class WebSocketExampleWithCCApp extends Dsl {
         Ok(htmlContent.render, Header(TextHtml))
 
       case req@Request(POST, Uri("/"), Some(_)) =>
-        val m: Message = req.as[Message]((_: String) => Message("", ""))
+        val m: Message = req.as[Message]
         if (m.name == "") Ok(Response(false, "Name cannot be empty").asJson, Header(ApplicationJson))
         else if (m.msg == "") Ok(Response(false, "Message cannot be empty").asJson, Header(ApplicationJson))
         else {

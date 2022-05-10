@@ -19,12 +19,7 @@ object / {
     } else {
       uri.path
     }
-    println("1 " + (pth.split("/").toList match {
-      case (lst: List[String]) :+ (last: String) if lst.isEmpty => Some(Uri("/") -> last)
-      case (lst: List[String]) :+ (last: String) => Some(lst.foldLeft(Uri(""))((acc, s) => acc.combine(s)) -> last)
-      case _ => Some(Uri("/") -> "")
-    }))
-    pth.split("/").toList match {
+    pth.split('/').toList match {
       case (lst: List[String]) :+ (last: String)  if lst.isEmpty => Some(Uri("/") -> last)
       case (lst: List[String]) :+ (last: String) => Some(lst.foldLeft(Uri(""))((acc, s) => acc.combine(s)) -> last)
       case _ => Some(Uri("/") -> "")
