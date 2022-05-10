@@ -1,13 +1,16 @@
 import scalatags.Text.all.*
 import scalatags.generic.Frag
-import websocket.IOApp
+import websocket.{Dsl, Header, HttpRoutes, IOApp, Method, Ok, RawServerRequest, RawWebSocket, Request, ServerBuilder, Uri, WebSocketBuilder2, StaticFile}
+import websocket.Method.*
+import websocket.ContentType.*
 
 object WebSocketExampleWithCC extends IOApp {
-  override def run(args: List[String]): ExitCode = 0
-    new WebSocketExampleWithCCApp().stream
+  override def run(args: List[String]): Int =
+    new WebSocketExampleWithCCApp().stream.last
+//
 }
 
-class WebSocketExampleWithCCApp {
+class WebSocketExampleWithCCApp extends Dsl {
   import colltest5.strawman.collections.*
   import CollectionStrawMan5.*
 
@@ -46,58 +49,52 @@ class WebSocketExampleWithCCApp {
   var messages: List[Message] = List(Message("bob", "I am cow, hear me moo"), Message("alice", "Hello World!"))
 
   case class Message(name: String, msg: String)
+  case class Response(success: Boolean, err: String) {
+    def asJson: String =
+      f"{\"success\": $success, \"err\": \"$err\"}"
+  }
 
-  case class Response(success: Boolean, err: String)
-//
-//  // Not working
-//  def removeCapability[A](el: {*} A): A = el.asInstanceOf[A]
-//
-//  def routes(wsb: WebSocketBuilder2[F]): HttpRoutes[F] =
-//    val queueCapability: {*} Queue[F, Option[String]] = null
-//    val openConnectionQueues: ListBuffer[{queueCapability} Queue[F, Option[String]]] = ListBuffer[{queueCapability} Queue[F, Option[String]]]()
-//    val bootstrap = "https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.css"
-//    HttpRoutes.of[F] {
-//      case request@GET -> Root / static / fileName =>
-//        StaticFile.fromPath(fs2.io.file.Path(s"static/$fileName"), Some(request))
-//          .getOrElseF(NotFound())
-//
-//      case GET -> Root =>
-//        val htmlContent = doctype("html")(
-//          html(
-//            head(
-//              link(rel := "stylesheet", href := bootstrap),
-//              script(src := "/static/app.js")
-//            ),
-//            body(
-//              div(cls := "container")(
-//                h1("Scala Chat!"),
-//                div(id := "messageList")(messageList()),
-//                div(id := "errorDiv", color.red),
-//                form(onsubmit := "submitForm(); return false")(
-//                  input(`type` := "text", id := "nameInput", placeholder := "User name"),
-//                  input(`type` := "text", id := "msgInput", placeholder := "Write a message!"),
-//                  input(`type` := "submit")
-//                )
-//              )
-//            )
-//          )
-//        )
-//        Ok(htmlContent.render, `Content-Type`(MediaType.text.html, Charset.`UTF-8`))
-//
-//      case req@POST -> Root =>
-//        for {
-//          m: Message <- req.as[Message]
-//          resp <- if (m.name == "") Ok(Response(false, "Name cannot be empty").asJson)
-//          else if (m.msg == "") Ok(Response(false, "Message cannot be empty").asJson)
-//          else {
-//            messages = List(m) ++ messages
-//            for {
-//              _ <- openConnectionQueues.map((s: {*} Queue[F, Option[String]]) => s.offer(Some(messageList().render))).toScalaList.sequence
-//              res <- Ok(Response(true, "").asJson)
-//            } yield res
-//          }
-//        } yield resp
-//
+  def routes(wsb: WebSocketBuilder2): HttpRoutes =
+    val queueCapability: {*} LazyList[Option[String]] = null
+    val openConnectionQueues: ListBuffer[{queueCapability} LazyList[Option[String]]] = ListBuffer[{queueCapability} LazyList[Option[String]]]()
+    val bootstrap = "https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.css"
+    HttpRoutes().of {
+      case request@Request(GET, Uri("/static/app.js"), None) => // TODO filename should be string
+        StaticFile.fromPath("static/app.js")
+
+      case Request(GET, Uri("/"), None) =>
+        val htmlContent = doctype("html")(
+          html(
+            head(
+              link(rel := "stylesheet", href := bootstrap),
+              script(src := "/static/app.js")
+            ),
+            body(
+              div(cls := "container")(
+                h1("Scala Chat!"),
+                div(id := "messageList")(messageList()),
+                div(id := "errorDiv", color.red),
+                form(onsubmit := "submitForm(); return false")(
+                  input(`type` := "text", id := "nameInput", placeholder := "User name"),
+                  input(`type` := "text", id := "msgInput", placeholder := "Write a message!"),
+                  input(`type` := "submit")
+                )
+              )
+            )
+          )
+        )
+        Ok(htmlContent.render, Header(TextHtml))
+
+      case req@Request(POST, Uri("/"), Some(_)) =>
+        val m: Message = req.as[Message]((_: String) => Message("", ""))
+        if (m.name == "") Ok(Response(false, "Name cannot be empty").asJson, Header(ApplicationJson))
+        else if (m.msg == "") Ok(Response(false, "Message cannot be empty").asJson, Header(ApplicationJson))
+        else {
+          messages = List(m) ++ messages
+//          openConnectionQueues.map((s: {*} LazyList[Option[String]]) => s.offer(Some(messageList().render))).toScalaList.sequence
+          Ok(Response(true, "").asJson, Header(ApplicationJson))
+        }
+
 //      case GET -> Root / "subscribe" =>
 //        Queue.unbounded[F, Option[String]].flatMap((newQueue: Queue[F, Option[String]]) => {
 //          val queueAsCapability: {queueCapability} Queue[F, Option[String]] = newQueue
@@ -111,13 +108,13 @@ class WebSocketExampleWithCCApp {
 //          }
 //          wsb.build(toClient, fromClient)
 //        })
-//    }
-//
+    }
+
   def messageList(): Frag[scalatags.text.Builder, String] = frag((for (u <- messages) yield p(b(u.name), " ", u.msg)).toScalaList)
 
-  def stream: ExitType = 0
-//    BlazeServerBuilder[F]
-//      .bindHttp(8080)
-//      .withHttpWebSocketApp(routes(_).orNotFound)
-//      .serve
+  def stream: LazyList[Int] =
+    ServerBuilder()
+      .bindHttp(8080)
+      .withHttpWebSocketApp(routes(WebSocketBuilder2()).orNotFound)
+      .serve
 }

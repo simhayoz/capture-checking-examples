@@ -27,7 +27,6 @@ class RawWebSocket {
     // Handshake with the client
     val data: String = s.useDelimiter("\\r\\n\\r\\n").next
     val get = Pattern.compile("^GET").matcher(data)
-    println(data)
     if (get.find) {
       val match_data = Pattern.compile("Sec-WebSocket-Key: (.*)").matcher(data)
       match_data.find
