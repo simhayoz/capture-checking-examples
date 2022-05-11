@@ -13,18 +13,22 @@ class WebSocketServerHandler(header: String, client: Socket, in: InputStream, ou
   implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global
 
   val isClosed: AtomicBoolean = new AtomicBoolean(false)
+  val clientSubscriber: QueueSubscriber[WebSocketFrame] = QueueSubscriber(toClient)
 
   def handle(): Unit =
     val match_data = Pattern.compile("Sec-WebSocket-Key: (.*)").matcher(header)
     match_data.find
     val response = ("HTTP/1.1 101 Switching Protocols\r\n" + "Connection: Upgrade\r\n" + "Upgrade: websocket\r\n" + "Sec-WebSocket-Accept: " + Base64.getEncoder.encodeToString(MessageDigest.getInstance("SHA-1").digest((match_data.group(1) + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").getBytes("UTF-8"))) + "\r\n\r\n").getBytes("UTF-8")
     out.write(response, 0, response.length)
-    QueueSubscriber(toClient, e => sendToClient(e))
+    Future {
+      clientSubscriber.onNewElement(e => sendToClient(e))
+    }
     Future {
       _loopReceiveFromClient()
     }
 
   def _closeAndFreeResources(): Unit =
+    clientSubscriber.unsubscribe()
     isClosed.set(true)
     in.close()
     out.close()
