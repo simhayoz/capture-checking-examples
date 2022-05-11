@@ -91,7 +91,7 @@ class WebSocketExampleWithCCApp extends Dsl {
 
       case Request(GET, Uri("/subscribe"), None) =>
         val newQueue: ConcurrentLinkedQueue[WebSocketFrame] = new ConcurrentLinkedQueue[WebSocketFrame]()
-        val queueAsCapability: {queueCapability} ConcurrentLinkedQueue[WebSocketFrame] = newQueue
+        val queueAsCapability: {queueCapability} ConcurrentLinkedQueue[WebSocketFrame] = newQueue // TODO use newQueue as capability directly
         openConnectionQueues += queueAsCapability
         val toClient: ConcurrentLinkedQueue[WebSocketFrame] = newQueue
         val fromClient: Pipe[WebSocketFrame, Unit] = {
