@@ -2,20 +2,7 @@ package websocket
 
 import scala.reflect.ClassTag
 
-class Request(val method: Method, val uri: Uri, val postBody: Option[String]) {//extends Product with Serializable {
-//  override def canEqual(that: Any): Boolean = that.isInstanceOf[Request]
-//
-//  override def productArity: Int = 2
-//
-//  override def productElement(n: Int): Any = {
-//    if(n == 0)
-//      method
-//    else if(n == 1)
-//      uri
-//    else
-//      throw new IndexOutOfBoundsException("")
-//  }
-  //  val Message_ : Class[Message] = classOf[Message]
+class Request(val method: Method, val uri: Uri, val postBody: Option[String]) {
   def as[A](implicit transf: String => A): A = transf(postBody.get)
 
   override def toString: String = f"Request($method, $uri, $postBody)"

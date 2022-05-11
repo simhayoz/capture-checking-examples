@@ -1,6 +1,6 @@
 import scalatags.Text.all.*
 import scalatags.generic.Frag
-import websocket.{Dsl, Header, HttpRoutes, IOApp, Close, Method, Ok, RawServerRequest, RawWebSocket, Request, ServerBuilder, StaticFile, Uri, WebSocketBuilder, WebSocketFrame, Text, Pipe}
+import websocket.{Dsl, Header, HttpRoutes, IOApp, Close, Method, Ok, Request, ServerBuilder, StaticFile, Uri, WebSocketBuilder, WebSocketFrame, Text, Pipe}
 import websocket.Method.*
 import websocket.ContentType.*
 
