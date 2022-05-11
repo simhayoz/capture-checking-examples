@@ -1,10 +1,9 @@
-import scalatags.Text.all.*
-import scalatags.generic.Frag
-import websocket.{Dsl, Header, HttpRoutes, IOApp, Close, Method, Ok, Request, ServerBuilder, StaticFile, Uri, WebSocketBuilder, WebSocketFrame, Text, Pipe}
+import websocket.{Close, Dsl, Header, HttpRoutes, IOApp, Method, Ok, Pipe, Request, ServerBuilder, StaticFile, Text, Uri, WebSocketBuilder, WebSocketFrame}
 import websocket.Method.*
 import websocket.ContentType.*
 
 import java.util.concurrent.ConcurrentLinkedQueue
+import scala.collection.mutable
 
 object WebSocketExampleWithCC extends IOApp {
   override def run(args: List[String]): Int =
@@ -28,23 +27,16 @@ class WebSocketExampleWithCCApp extends Dsl {
       }
       newList
     }
-    def toScalaList: scala.List[A] = {
-      var newList = scala.List[A]()
-      val these: Iterator[A] = l.iterator
-      while (these.hasNext) {
-        newList = these.next() :: newList
-      }
-      newList
-    }
 
   extension [A](l: List[A])
-    def toScalaList: scala.List[A] = {
-      var newList = scala.List[A]()
+    def mkString: String = {
+      val strBuilder: mutable.StringBuilder = mutable.StringBuilder()
       val these: Iterator[A] = l.iterator
       while (these.hasNext) {
-        newList = these.next() :: newList
+        val curr = these.next()
+        strBuilder.append(curr)
       }
-      newList
+      strBuilder.mkString
     }
 
   var messages: List[Message] = List(Message("bob", "I am cow, hear me moo"), Message("alice", "Hello World!"))
@@ -70,27 +62,22 @@ class WebSocketExampleWithCCApp extends Dsl {
         StaticFile.fromPath("static/app.js")
 
       case Request(GET, Uri("/"), None) =>
-        val htmlContent = doctype("html")(
-          html(
-            head(
-              link(rel := "stylesheet", href := bootstrap),
-              script(src := "/static/app.js")
-            ),
-            body(
-              div(cls := "container")(
-                h1("Scala Chat!"),
-                div(id := "messageList")(messageList()),
-                div(id := "errorDiv", color.red),
-                form(onsubmit := "submitForm(); return false")(
-                  input(`type` := "text", id := "nameInput", placeholder := "User name"),
-                  input(`type` := "text", id := "msgInput", placeholder := "Write a message!"),
-                  input(`type` := "submit")
-                )
-              )
-            )
-          )
-        )
-        Ok(htmlContent.render, Header(TextHtml))
+        val htmlContent = s"""<!DOCTYPE html>
+                            |<html>
+                            |<head>
+                            |    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.css"/>
+                            |    <script src="/static/app.js"></script>
+                            |</head>
+                            |<body>
+                            |<div class="container"><h1>Scala Chat!</h1>
+                            |    <div id="messageList">${messageList()}</div>
+                            |    <div id="errorDiv" style="color: red;"></div>
+                            |    <form onsubmit="submitForm(); return false"><input type="text" id="nameInput" placeholder="User name"/><input
+                            |            type="text" id="msgInput" placeholder="Write a message!"/><input type="submit"/></form>
+                            |</div>
+                            |</body>
+                            |</html>""".stripMargin
+        Ok(htmlContent, Header(TextHtml))
 
       case req@Request(POST, Uri("/"), Some(_)) =>
         val m: Message = req.as[Message]
@@ -98,7 +85,7 @@ class WebSocketExampleWithCCApp extends Dsl {
         else if (m.msg == "") Ok(Response(false, "Message cannot be empty").asJson, Header(ApplicationJson))
         else {
           messages = List(m) ++ messages
-          openConnectionQueues.map((s: {*} ConcurrentLinkedQueue[WebSocketFrame]) => s.offer(Text(messageList().render)))
+          openConnectionQueues.map((s: {*} ConcurrentLinkedQueue[WebSocketFrame]) => s.offer(Text(messageList())))
           Ok(Response(true, "").asJson, Header(ApplicationJson))
         }
 
@@ -115,7 +102,7 @@ class WebSocketExampleWithCCApp extends Dsl {
         wsb.build(toClient, fromClient)
     }
 
-  def messageList(): Frag[scalatags.text.Builder, String] = frag((for (u <- messages) yield p(b(u.name), " ", u.msg)).toScalaList)
+  def messageList(): String = messages.reverse.map(m => s"<p><b>${m.name}</b> ${m.msg}</p>").mkString
 
   def stream: LazyList[Int] =
     ServerBuilder()

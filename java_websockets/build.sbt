@@ -10,6 +10,5 @@ lazy val root = project
 
 //    scalacOptions ++= Seq("-Ycc"),
 
-    libraryDependencies ++= Seq("org.scalameta" %% "munit" % "0.7.29" % Test,
-        "com.lihaoyi" %% "scalatags" % "0.11.1")
+    libraryDependencies ++= Seq("org.scalameta" %% "munit" % "0.7.29" % Test)
   )
