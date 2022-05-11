@@ -28,6 +28,5 @@ object / {
 
 object -> {
   def unapply(req: Request): Some[(Method, Uri)] =
-    println("2 " +Some((req.method, req.uri)))
     Some((req.method, req.uri))
 }

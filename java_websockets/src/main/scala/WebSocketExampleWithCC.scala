@@ -1,8 +1,10 @@
 import scalatags.Text.all.*
 import scalatags.generic.Frag
-import websocket.{Dsl, Header, HttpRoutes, IOApp, Method, Ok, RawServerRequest, RawWebSocket, Request, ServerBuilder, Uri, WebSocketBuilder2, StaticFile}
+import websocket.{Dsl, Header, HttpRoutes, IOApp, Close, Method, Ok, RawServerRequest, RawWebSocket, Request, ServerBuilder, StaticFile, Uri, WebSocketBuilder, WebSocketFrame, Text, Pipe}
 import websocket.Method.*
 import websocket.ContentType.*
+
+import java.util.concurrent.ConcurrentLinkedQueue
 
 object WebSocketExampleWithCC extends IOApp {
   override def run(args: List[String]): Int =
@@ -59,12 +61,12 @@ class WebSocketExampleWithCCApp extends Dsl {
       f"{\"success\": $success, \"err\": \"$err\"}"
   }
 
-  def routes(wsb: WebSocketBuilder2): HttpRoutes =
-    val queueCapability: {*} LazyList[Option[String]] = null
-    val openConnectionQueues: ListBuffer[{queueCapability} LazyList[Option[String]]] = ListBuffer[{queueCapability} LazyList[Option[String]]]()
+  def routes(wsb: WebSocketBuilder): HttpRoutes =
+    val queueCapability: {*} LazyList[String] = null
+    val openConnectionQueues: ListBuffer[{queueCapability} ConcurrentLinkedQueue[WebSocketFrame]] = ListBuffer[{queueCapability} ConcurrentLinkedQueue[WebSocketFrame]]()
     val bootstrap = "https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.css"
     HttpRoutes().of {
-      case request@Request(GET, Uri("/static/app.js"), None) => // TODO filename should be string
+      case Request(GET, Uri("/static/app.js"), None) => // TODO filename should be string
         StaticFile.fromPath("static/app.js")
 
       case Request(GET, Uri("/"), None) =>
@@ -96,23 +98,21 @@ class WebSocketExampleWithCCApp extends Dsl {
         else if (m.msg == "") Ok(Response(false, "Message cannot be empty").asJson, Header(ApplicationJson))
         else {
           messages = List(m) ++ messages
-//          openConnectionQueues.map((s: {*} LazyList[Option[String]]) => s.offer(Some(messageList().render))).toScalaList.sequence
+          openConnectionQueues.map((s: {*} ConcurrentLinkedQueue[WebSocketFrame]) => s.offer(Text(messageList().render)))
           Ok(Response(true, "").asJson, Header(ApplicationJson))
         }
 
-//      case GET -> Root / "subscribe" =>
-//        Queue.unbounded[F, Option[String]].flatMap((newQueue: Queue[F, Option[String]]) => {
-//          val queueAsCapability: {queueCapability} Queue[F, Option[String]] = newQueue
-//          openConnectionQueues += queueAsCapability
-//          val toClient: Stream[F, WebSocketFrame] =
-//            Stream.fromQueueNoneTerminated(newQueue).map(s => Text(s))
-//          val fromClient: Pipe[F, WebSocketFrame, Unit] = _.evalMap {
-//            case Text(t, _) => F.delay(println(t))
-//            case Close(_) => F.delay(openConnectionQueues -= newQueue)
-//            case f => F.delay(println(s"Unknown type: $f"))
-//          }
-//          wsb.build(toClient, fromClient)
-//        })
+      case Request(GET, Uri("/subscribe"), None) =>
+        val newQueue: ConcurrentLinkedQueue[WebSocketFrame] = new ConcurrentLinkedQueue[WebSocketFrame]()
+        val queueAsCapability: {queueCapability} ConcurrentLinkedQueue[WebSocketFrame] = newQueue
+        openConnectionQueues += queueAsCapability
+        val toClient: ConcurrentLinkedQueue[WebSocketFrame] = newQueue
+        val fromClient: Pipe[WebSocketFrame, Unit] = {
+          case Text(t) => println(t)
+          case Close(_) => openConnectionQueues -= newQueue
+          case f => println(s"Unknown type: $f")
+        }
+        wsb.build(toClient, fromClient)
     }
 
   def messageList(): Frag[scalatags.text.Builder, String] = frag((for (u <- messages) yield p(b(u.name), " ", u.msg)).toScalaList)
@@ -120,6 +120,6 @@ class WebSocketExampleWithCCApp extends Dsl {
   def stream: LazyList[Int] =
     ServerBuilder()
       .bindHttp(8080)
-      .withHttpWebSocketApp(routes(WebSocketBuilder2()).orNotFound)
+      .withHttpWebSocketApp(routes(WebSocketBuilder()).orNotFound)
       .serve
 }
