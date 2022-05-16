@@ -14,9 +14,9 @@ class Server(pf: PartialFunction[Request, Response], port: Int) {
   def _getContentLength(s: BufferedReader): Int = {
     var nLine = "."
     var contentLength = -1
-    while(!nLine.isBlank) {
+    while (!nLine.isBlank) {
       nLine = s.readLine()
-      if(nLine.startsWith("Content-Length: ")) {
+      if (nLine.startsWith("Content-Length: ")) {
         contentLength = nLine.substring(16).toInt
       }
     }
@@ -30,7 +30,7 @@ class Server(pf: PartialFunction[Request, Response], port: Int) {
     val s: BufferedReader = new BufferedReader(new InputStreamReader(in))
     val firstLine = s.readLine().split(' ')
     val method = Method.valueOf(firstLine.head)
-    val request = if(method == POST) {
+    val request = if (method == POST) {
       val len = _getContentLength(s)
       val buf = new Array[Char](len)
       s.read(buf)
@@ -43,7 +43,7 @@ class Server(pf: PartialFunction[Request, Response], port: Int) {
       case WebSocketResponsePipe(toClient, fromClient) =>
         val headerBuilder: mutable.StringBuilder = mutable.StringBuilder()
         var nLine = "."
-        while(!nLine.isBlank) {
+        while (!nLine.isBlank) {
           nLine = s.readLine()
           headerBuilder.append(nLine).append("\n")
         }

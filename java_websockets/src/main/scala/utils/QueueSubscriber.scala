@@ -8,8 +8,8 @@ class QueueSubscriber[A](val concurrentLinkedQueue: ConcurrentLinkedQueue[A]) {
 
   def onNewElement(f: A => Unit): Unit =
     var vlue: A = concurrentLinkedQueue.poll()
-    while(subscribed.get()) {
-      if(vlue != null) {
+    while (subscribed.get()) {
+      if (vlue != null) {
         f(vlue)
       }
       vlue = concurrentLinkedQueue.poll()

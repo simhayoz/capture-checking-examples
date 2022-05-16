@@ -1,7 +1,5 @@
 package server
 
-import server.websocket.{Method, Request}
-
 class Request(val method: Method, val uri: Uri, val postBody: Option[String]) {
   def as[A](implicit transf: String => A): A = transf(postBody.get)
 
@@ -10,5 +8,6 @@ class Request(val method: Method, val uri: Uri, val postBody: Option[String]) {
 
 object Request {
   def apply(method: Method, uri: Uri, postBody: Option[String]): Request = new Request(method, uri, postBody)
+
   def unapply(arg: Request): Option[(Method, Uri, Option[String])] = Some((arg.method, arg.uri, arg.postBody))
 }

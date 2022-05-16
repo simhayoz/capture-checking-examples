@@ -1,7 +1,5 @@
 package server
 
-import server.websocket.HttpRoutes
-
 class ServerBuilder {
 
   var port: Int = -1
@@ -19,7 +17,7 @@ class ServerBuilder {
 
   def serve: LazyList[Int] =
     val server = Server(this.routes.pf, port)
-    while(true)
+    while (true)
       server.listenOnNewRequests
     LazyList(0)
 }

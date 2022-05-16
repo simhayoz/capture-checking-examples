@@ -1,6 +1,7 @@
 package server.websocket
 
-import utils.{BinaryRepr, QueueSubscriber}
+import server.Pipe
+import utils.{BinaryRepr, b, QueueSubscriber}
 
 import java.io.{InputStream, OutputStream}
 import java.net.Socket
@@ -11,16 +12,25 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.regex.Pattern
 import scala.concurrent.Future
 
+/**
+ * Represents a websocket server handler, handles connection upgrading, sending and receiving messages
+ *
+ * @param header     the header that was received from the client
+ * @param client     the client socket connection
+ * @param in         the input stream of bytes sent by the client
+ * @param out        the output stream of bytes sent to the client
+ * @param toClient   queue which will be updated with element to send to client
+ * @param fromClient pipe to be called when new element are received from client
+ */
 class WebSocketServerHandler(header: String, client: Socket, in: InputStream, out: OutputStream, toClient: ConcurrentLinkedQueue[WebSocketFrame], fromClient: Pipe[WebSocketFrame, Unit]) {
   implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global
-
-  extension (s: StringContext)
-    def b(): BinaryRepr = BinaryRepr(s.parts.reduce(_ + _))
-
 
   val isClosed: AtomicBoolean = new AtomicBoolean(false)
   val clientSubscriber: QueueSubscriber[WebSocketFrame] = QueueSubscriber(toClient)
 
+  /**
+   * Handle the websocket protocol
+   */
   def handle(): Unit =
     val match_data = Pattern.compile("Sec-WebSocket-Key: (.*)").matcher(header)
     match_data.find
@@ -41,20 +51,21 @@ class WebSocketServerHandler(header: String, client: Socket, in: InputStream, ou
     client.close()
 
   def _loopReceiveFromClient(): Unit =
-    while(!isClosed.get()) {
+    while (!isClosed.get()) {
       fromClient.apply(receiveFromClient)
     }
 
   /**
    * Send a text message to the client
+   *
    * @param msg the message to send
    */
   def sendToClient(wsf: WebSocketFrame): Unit = wsf match {
     case Text(msg) =>
       val opcodeOut = Array(b"10000001".toByte)
-      val lenOut = if(msg.length <= 125) {
+      val lenOut = if (msg.length <= 125) {
         Array(msg.length.toByte)
-      } else if(msg.length <= 65535) {
+      } else if (msg.length <= 65535) {
         Array(b"1111110".toByte) ++ BigInt(msg.length).toByteArray
       } else {
         Array(b"1111111".toByte) ++ BigInt(msg.length).toByteArray
@@ -77,7 +88,7 @@ class WebSocketServerHandler(header: String, client: Socket, in: InputStream, ou
     }
     (opcode & 0xFF).toBinaryString.takeRight(4) match {
       case "0001" =>
-        val len = in.readNBytes(1).map(fromSignedByte).head
+        val len = in.readNBytes(1).map(_fromSignedByte).head
         val key = in.readNBytes(4)
         val encoded = in.readNBytes(len - 128)
         val decoded = new Array[Byte](len - 128)
@@ -92,5 +103,5 @@ class WebSocketServerHandler(header: String, client: Socket, in: InputStream, ou
     }
   }
 
-  def fromSignedByte(b: Byte): Int = Integer.parseInt((b & 0xFF).toBinaryString, 2)
+  def _fromSignedByte(b: Byte): Int = Integer.parseInt((b & 0xFF).toBinaryString, 2)
 }

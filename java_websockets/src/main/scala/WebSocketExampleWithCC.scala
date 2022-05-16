@@ -1,6 +1,9 @@
 
-import server.{Dsl, Header, HttpRoutes, IOApp, Method, Ok, Request, ServerBuilder, StaticFile, Uri}
+import server.{Dsl, Header, HttpRoutes, IOApp, Method, Ok, Pipe, Request, ServerBuilder, StaticFile, Uri}
 import server.websocket.{Close, Text, WebSocketBuilder, WebSocketFrame}
+
+import server.Method.*
+import server.ContentType.*
 
 import java.util.concurrent.ConcurrentLinkedQueue
 import scala.collection.mutable
