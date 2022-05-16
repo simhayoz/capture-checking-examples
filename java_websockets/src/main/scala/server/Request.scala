@@ -5,9 +5,10 @@ package server
  *
  * @param method   the method type
  * @param uri      the uri of the request
+ * @param headers  the headers of the request
  * @param postBody the body of the request in case of POST method
  */
-class Request(val method: Method, val uri: Uri, val postBody: Option[String]) { // TODO add header here for server simplification
+class Request(val method: Method, val uri: Uri, val headers: RequestHeader, val postBody: Option[String]) {
   /**
    * Transform the json string representation of an object to the object
    *
@@ -17,11 +18,13 @@ class Request(val method: Method, val uri: Uri, val postBody: Option[String]) { 
    */
   def as[A](implicit transf: String => A): A = transf(postBody.get)
 
-  override def toString: String = f"Request($method, $uri, $postBody)"
+  override def toString: String = f"Request($method, $uri, $headers, $postBody)"
 }
 
 object Request {
-  def apply(method: Method, uri: Uri, postBody: Option[String]): Request = new Request(method, uri, postBody)
+  def apply(method: Method, uri: Uri, headers: RequestHeader, postBody: Option[String]): Request = new Request(method, uri, headers, postBody)
 
   def unapply(arg: Request): Option[(Method, Uri, Option[String])] = Some((arg.method, arg.uri, arg.postBody))
 }
+
+type RequestHeader = Map[String, String]

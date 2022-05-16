@@ -1,6 +1,6 @@
 package server
 
-import server.Method.POST
+import server.Method.*
 import server.websocket.*
 
 import java.io.{BufferedReader, InputStream, InputStreamReader, OutputStream}
@@ -22,48 +22,46 @@ class Server(pf: PartialFunction[Request, Response], port: Int) {
    *
    * @return the return code of handling the new request
    */
-  def listenOnNewRequests: Int = // TODO handle more cleanly
+  def listenOnNewRequests: Int =
     val client: Socket = server.accept()
     val in = client.getInputStream
     val out = client.getOutputStream
     val s: BufferedReader = new BufferedReader(new InputStreamReader(in))
     val firstLine = s.readLine().split(' ')
     val method = Method.valueOf(firstLine.head)
-    val request = if (method == POST) {
-      val len = _getContentLength(s)
-      val buf = new Array[Char](len)
-      s.read(buf)
-      Request(method, Uri(firstLine.tail.head), Some(buf.mkString))
-    } else {
-      Request(method, Uri(firstLine.tail.head), None)
+    val headers = _buildHeaders(s)
+    val request = method match {
+      case POST =>
+        val len = _getContentLength(headers)
+        val buf = new Array[Char](len)
+        s.read(buf)
+        Request(method, Uri(firstLine.tail.head), headers, Some(buf.mkString))
+      case GET =>
+        Request(method, Uri(firstLine.tail.head), headers, None)
     }
-    val rep = pf.applyOrElse(request, r => NotFound("Not Found: " + r.uri.path))
-    rep match {
+    pf.applyOrElse(request, r => NotFound("Not Found: " + r.uri.path)) match {
       case WebSocketResponsePipe(toClient, fromClient) =>
-        val headerBuilder: mutable.StringBuilder = mutable.StringBuilder()
-        var nLine = "."
-        while (!nLine.isBlank) {
-          nLine = s.readLine()
-          headerBuilder.append(nLine).append("\n")
-        }
-        WebSocketServerHandler(headerBuilder.mkString, client, in, out, toClient, fromClient).handle()
+        WebSocketServerHandler(request, client, in, out, toClient, fromClient).handle()
         0
-      case _ =>
+      case rep =>
         out.write(rep.createResponse)
         s.close()
         client.close()
         0
     }
 
-  def _getContentLength(s: BufferedReader): Int = {
+  def _buildHeaders(s: BufferedReader): RequestHeader = {
+    var mp: Map[String, String] = Map()
     var nLine = "."
-    var contentLength = -1
     while (!nLine.isBlank) {
       nLine = s.readLine()
-      if (nLine.startsWith("Content-Length: ")) {
-        contentLength = nLine.substring(16).toInt
-      }
+      val splt = nLine.split(':')
+      if (splt.length > 1)
+        mp += (splt(0) -> splt.tail.mkString.trim)
     }
-    contentLength
+    mp
   }
+
+  def _getContentLength(rh: RequestHeader): Int =
+    rh("Content-Length").toInt
 }
