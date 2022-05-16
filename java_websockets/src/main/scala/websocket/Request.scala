@@ -1,7 +1,5 @@
 package websocket
 
-import scala.reflect.ClassTag
-
 class Request(val method: Method, val uri: Uri, val postBody: Option[String]) {
   def as[A](implicit transf: String => A): A = transf(postBody.get)
 

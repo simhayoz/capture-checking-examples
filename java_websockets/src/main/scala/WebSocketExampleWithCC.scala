@@ -58,10 +58,10 @@ class WebSocketExampleWithCCApp extends Dsl {
     val openConnectionQueues: ListBuffer[{queueCapability} ConcurrentLinkedQueue[WebSocketFrame]] = ListBuffer[{queueCapability} ConcurrentLinkedQueue[WebSocketFrame]]()
     val bootstrap = "https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.css"
     HttpRoutes().of {
-      case Request(GET, Uri("/static/app.js"), None) => // TODO filename should be string
-        StaticFile.fromPath("static/app.js")
+      case GET -> Root / "static" / filename =>
+        StaticFile.fromPath(f"static/$filename")
 
-      case Request(GET, Uri("/"), None) =>
+      case GET -> Root =>
         val htmlContent = s"""<!DOCTYPE html>
                             |<html>
                             |<head>
@@ -79,7 +79,7 @@ class WebSocketExampleWithCCApp extends Dsl {
                             |</html>""".stripMargin
         Ok(htmlContent, Header(TextHtml))
 
-      case req@Request(POST, Uri("/"), Some(_)) =>
+      case req@POST -> Root =>
         val m: Message = req.as[Message]
         if (m.name == "") Ok(Response(false, "Name cannot be empty").asJson, Header(ApplicationJson))
         else if (m.msg == "") Ok(Response(false, "Message cannot be empty").asJson, Header(ApplicationJson))
@@ -89,7 +89,7 @@ class WebSocketExampleWithCCApp extends Dsl {
           Ok(Response(true, "").asJson, Header(ApplicationJson))
         }
 
-      case Request(GET, Uri("/subscribe"), None) =>
+      case GET -> Root / "subscribe" =>
         val newQueue: ConcurrentLinkedQueue[WebSocketFrame] = new ConcurrentLinkedQueue[WebSocketFrame]()
         val queueAsCapability: {queueCapability} ConcurrentLinkedQueue[WebSocketFrame] = newQueue // TODO use newQueue as capability directly
         openConnectionQueues += queueAsCapability

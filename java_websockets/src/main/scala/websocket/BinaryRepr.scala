@@ -10,7 +10,6 @@ object BinaryRepr {
   def fromByte(b: Byte): BinaryRepr = {
     val bin = b.toInt.toBinaryString.takeRight(8)
     println(bin)
-    //bin.reverse.padTo(8, '0').reverse.mkString
     BinaryRepr(bin)
   }
 }

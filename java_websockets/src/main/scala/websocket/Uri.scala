@@ -8,6 +8,7 @@ class Uri(val path: String) {
 }
 
 object Uri {
+  val Root: Uri = new Uri("/")
   def apply(path: String): Uri = new Uri(path)
   def unapply(arg: Uri): Option[String] = Some(arg.path)
 }
@@ -20,13 +21,17 @@ object / {
       uri.path
     }
     pth.split('/').toList match {
-      case (lst: List[String]) :+ (last: String)  if lst.isEmpty => Some(Uri("/") -> last)
+      case (lst: List[String]) :+ (last: String)  if lst.isEmpty => Some(Uri.Root -> last)
       case (lst: List[String]) :+ (last: String) => Some(lst.foldLeft(Uri(""))((acc, s) => acc.combine(s)) -> last)
-      case _ => Some(Uri("/") -> "")
+      case _ => None
     }
 }
 
 object -> {
   def unapply(req: Request): Some[(Method, Uri)] =
-    Some((req.method, req.uri))
+    if(req.uri.path == "/"){
+      Some(req.method -> Uri.Root)
+    } else {
+      Some(req.method -> req.uri)
+    }
 }
