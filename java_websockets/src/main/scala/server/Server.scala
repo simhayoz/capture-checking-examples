@@ -14,7 +14,7 @@ import scala.collection.mutable
  * @param pf   the partial function to be applied when receiving a new request
  * @param port the port to listen from
  */
-class Server(pf: PartialFunction[Request, {*} Response], port: Int) {
+class Server(pf: Request => {*} Response, port: Int) {
   val server: ServerSocket = ServerSocket(port)
 
   /**
@@ -39,7 +39,7 @@ class Server(pf: PartialFunction[Request, {*} Response], port: Int) {
       case GET =>
         Request(method, Uri(firstLine.tail.head), headers, None)
     }
-    pf.applyOrElse(request, r => NotFound("Not Found: " + r.uri.path)) match {
+    pf(request) match { // TODO or else: , r => NotFound("Not Found: " + r.uri.path)
       case WebSocketResponsePipe(toClient, fromClient) =>
         WebSocketServerHandler(request, client, in, out, toClient, fromClient).handle()
         0
