@@ -1,16 +1,15 @@
 
-import server.{Dsl, Header, HttpRoutes, IOApp, Method, Ok, Pipe, Request, ServerBuilder, StaticFile, Uri}
+import server.{Dsl, ExitCode, Header, HttpRoutes, IOApp, Method, Ok, Pipe, Request, ServerBuilder, StaticFile, Uri}
 import server.websocket.{Close, Text, WebSocketBuilder, WebSocketFrame}
-
 import server.Method.*
 import server.ContentType.*
 
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.{ConcurrentLinkedDeque, ConcurrentLinkedQueue}
 import scala.collection.mutable
 
 object WebSocketExampleWithCC extends IOApp {
-  override def run(args: List[String]): Int =
-    new WebSocketExampleWithCCApp().stream.last
+  override def run(args: List[String]): ExitCode =
+    new WebSocketExampleWithCCApp().stream.getLast
 }
 
 class WebSocketExampleWithCCApp extends Dsl {
@@ -57,7 +56,7 @@ class WebSocketExampleWithCCApp extends Dsl {
   }
 
   def routes(wsb: WebSocketBuilder): HttpRoutes =
-    val queueCapability: {*} LazyList[String] = null
+    val queueCapability: {*} ConcurrentLinkedQueue[WebSocketFrame] = null
     val openConnectionQueues: ListBuffer[{queueCapability} ConcurrentLinkedQueue[WebSocketFrame]] = ListBuffer[{queueCapability} ConcurrentLinkedQueue[WebSocketFrame]]()
     val bootstrap = "https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.css"
     HttpRoutes().of {
@@ -107,7 +106,7 @@ class WebSocketExampleWithCCApp extends Dsl {
 
   def messageList(): String = messages.reverse.map(m => s"<p><b>${m.name}</b> ${m.msg}</p>").mkString
 
-  def stream: LazyList[Int] =
+  def stream: ConcurrentLinkedDeque[ExitCode] =
     ServerBuilder()
       .bindHttp(8080)
       .withHttpWebSocketApp(routes(WebSocketBuilder()).orNotFound)

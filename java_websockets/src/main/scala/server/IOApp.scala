@@ -13,6 +13,6 @@ trait IOApp {
    * @param args arguments provided to the app
    * @return the exit code
    */
-  def run(args: List[String]): Int
+  def run(args: List[String]): ExitCode
 
 }

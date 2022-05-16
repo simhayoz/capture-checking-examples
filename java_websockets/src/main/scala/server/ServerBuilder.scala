@@ -1,5 +1,7 @@
 package server
 
+import java.util.concurrent.ConcurrentLinkedDeque
+
 class ServerBuilder {
 
   var port: Int = -1
@@ -32,9 +34,10 @@ class ServerBuilder {
    *
    * @return a list of exit code for each request
    */
-  def serve: LazyList[Int] = // TODO adapt list type
+  def serve: ConcurrentLinkedDeque[Int] =
+    val queue: ConcurrentLinkedDeque[Int] = new ConcurrentLinkedDeque()
     val server = Server(this.routes.pf, port)
     while (true)
-      server.listenOnNewRequests
-    LazyList(0)
+      queue.add(server.listenOnNewRequests)
+    queue
 }
