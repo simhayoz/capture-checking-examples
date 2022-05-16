@@ -26,7 +26,7 @@ class WebSocketServerHandler(request: Request, client: Socket, in: InputStream, 
   implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global
 
   val isClosed: AtomicBoolean = new AtomicBoolean(false)
-  val clientSubscriber: {*} QueueSubscriber[WebSocketFrame] = QueueSubscriber(toClient)
+  val clientSubscriber: {toClient} QueueSubscriber[WebSocketFrame] = QueueSubscriber(toClient)
 
   /**
    * Handle the websocket protocol
