@@ -12,6 +12,10 @@ import scala.concurrent.Future
 class WebSocketServerHandler(header: String, client: Socket, in: InputStream, out: OutputStream, toClient: ConcurrentLinkedQueue[WebSocketFrame], fromClient: Pipe[WebSocketFrame, Unit]) {
   implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global
 
+  extension (s: StringContext)
+    def b(): BinaryRepr = BinaryRepr(s.parts.reduce(_ + _))
+
+
   val isClosed: AtomicBoolean = new AtomicBoolean(false)
   val clientSubscriber: QueueSubscriber[WebSocketFrame] = QueueSubscriber(toClient)
 
@@ -45,13 +49,13 @@ class WebSocketServerHandler(header: String, client: Socket, in: InputStream, ou
    */
   def sendToClient(wsf: WebSocketFrame): Unit = wsf match {
     case Text(msg) =>
-      val opcodeOut = Array(-127.toByte)
+      val opcodeOut = Array(b"10000001".toByte)
       val lenOut = if(msg.length <= 125) {
         Array(msg.length.toByte)
-      } else if(msg.length <= 65535) { // FIXME longer message not working yet
-        Array(-129.toByte) ++ BigInt(msg.length).toByteArray
+      } else if(msg.length <= 65535) {
+        Array(b"1111110".toByte) ++ BigInt(msg.length).toByteArray
       } else {
-        Array(-128.toByte) ++ BigInt(msg.length).toByteArray
+        Array(b"1111111".toByte) ++ BigInt(msg.length).toByteArray
       }
       val res = opcodeOut ++ lenOut ++ msg.getBytes
       out.write(res, 0, res.length)
@@ -70,7 +74,8 @@ class WebSocketServerHandler(header: String, client: Socket, in: InputStream, ou
       throw RuntimeException("Cannot parse message on multiple frames (unsupported)")
     }
     (opcode & 0xFF).toBinaryString.takeRight(4) match {
-      case "0001" => val len = in.readNBytes(1).map(fromSignedByte).head
+      case "0001" =>
+        val len = in.readNBytes(1).map(fromSignedByte).head
         val key = in.readNBytes(4)
         val encoded = in.readNBytes(len - 128)
         val decoded = new Array[Byte](len - 128)
@@ -78,12 +83,11 @@ class WebSocketServerHandler(header: String, client: Socket, in: InputStream, ou
           decoded(i) = (encoded(i) ^ key(i & 0x3)).toByte
         }
         Text(decoded.map(_.toChar).mkString)
-      case "1000" => {
+      case "1000" =>
         _closeAndFreeResources()
         Close(1000)
-      }
+      case f => throw RuntimeException(f"Unsupported frame received: $f")
     }
-
   }
 
   def fromSignedByte(b: Byte): Int = Integer.parseInt((b & 0xFF).toBinaryString, 2)

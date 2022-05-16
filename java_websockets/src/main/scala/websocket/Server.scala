@@ -41,7 +41,7 @@ class Server(pf: PartialFunction[Request, Response], port: Int) {
     }
     val rep = pf.applyOrElse(request, r => NotFound("Not Found: " + r.uri.path))
     rep match {
-      case WebSocketResponsePipe(toClient, fromClient) => {
+      case WebSocketResponsePipe(toClient, fromClient) =>
         val headerBuilder: mutable.StringBuilder = mutable.StringBuilder()
         var nLine = "."
         while(!nLine.isBlank) {
@@ -50,13 +50,11 @@ class Server(pf: PartialFunction[Request, Response], port: Int) {
         }
         WebSocketServerHandler(headerBuilder.mkString, client, in, out, toClient, fromClient).handle()
         0
-      }
-      case _ => {
+      case _ =>
         out.write(rep.createResponse)
         s.close()
         client.close()
         0
-      }
     }
 
 }
