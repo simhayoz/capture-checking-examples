@@ -11,19 +11,12 @@ import scala.collection.mutable
 class Server(pf: PartialFunction[Request, Response], port: Int) {
   val server: ServerSocket = ServerSocket(port)
 
-  def _getContentLength(s: BufferedReader): Int = {
-    var nLine = "."
-    var contentLength = -1
-    while (!nLine.isBlank) {
-      nLine = s.readLine()
-      if (nLine.startsWith("Content-Length: ")) {
-        contentLength = nLine.substring(16).toInt
-      }
-    }
-    contentLength
-  }
-
-  def listenOnNewRequests: Int =
+  /**
+   * Block until a new request is received and handle it
+   *
+   * @return the return code of handling the new request
+   */
+  def listenOnNewRequests: Int = // TODO handle more cleanly
     val client: Socket = server.accept()
     val in = client.getInputStream
     val out = client.getOutputStream
@@ -56,4 +49,15 @@ class Server(pf: PartialFunction[Request, Response], port: Int) {
         0
     }
 
+  def _getContentLength(s: BufferedReader): Int = {
+    var nLine = "."
+    var contentLength = -1
+    while (!nLine.isBlank) {
+      nLine = s.readLine()
+      if (nLine.startsWith("Content-Length: ")) {
+        contentLength = nLine.substring(16).toInt
+      }
+    }
+    contentLength
+  }
 }

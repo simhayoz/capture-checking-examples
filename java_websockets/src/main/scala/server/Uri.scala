@@ -3,9 +3,13 @@ package server
 import server.{Method, Request}
 
 class Uri(val path: String) {
-  def combine(other: String): Uri = Uri(f"$path/$other")
-
-  def combine(other: Uri): Uri = Uri(f"$path/${other.path}")
+  /**
+   * Combine this uri with a new part of the path
+   *
+   * @param part the new part of the path to add
+   * @return
+   */
+  def combine(part: String): Uri = Uri(f"$path/$part")
 
   override def toString: String = f"Uri($path)"
 }

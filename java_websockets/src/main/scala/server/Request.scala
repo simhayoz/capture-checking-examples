@@ -1,6 +1,13 @@
 package server
 
 class Request(val method: Method, val uri: Uri, val postBody: Option[String]) {
+  /**
+   * Transform the json string representation of an object to the object
+   *
+   * @param transf the implicit transformation function
+   * @tparam A the type of the object to be transformed
+   * @return the object transformed
+   */
   def as[A](implicit transf: String => A): A = transf(postBody.get)
 
   override def toString: String = f"Request($method, $uri, $postBody)"

@@ -1,6 +1,12 @@
 package server
 
 class Header(contentType: ContentType, charset: String = "UTF-8") {
+  /**
+   * Get the header string value to be sent through the connection
+   *
+   * @param contentLength length of the content
+   * @return the string representation of the header
+   */
   def toString(contentLength: Int): String = f"Content-type: ${contentType.toString}; charset=$charset\r\nContent-Length: $contentLength"
 }
 
