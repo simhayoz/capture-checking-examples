@@ -1,4 +1,6 @@
-package websocket
+package server.websocket
+
+import utils.{BinaryRepr, QueueSubscriber}
 
 import java.io.{InputStream, OutputStream}
 import java.net.Socket

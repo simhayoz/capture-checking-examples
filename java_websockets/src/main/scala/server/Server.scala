@@ -1,12 +1,11 @@
-package websocket
+package server
 
-import java.io.{InputStream, OutputStream}
+import server.Method.POST
+import server.websocket.*
+
+import java.io.{BufferedReader, InputStream, InputStreamReader, OutputStream}
 import java.net.{ServerSocket, Socket}
 import java.util.Scanner
-import Method.POST
-
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import scala.collection.mutable
 
 class Server(pf: PartialFunction[Request, Response], port: Int) {

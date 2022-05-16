@@ -1,6 +1,7 @@
-package websocket
+package server
 
-import ContentType.*
+import server.ContentType.*
+import server.websocket.{Header, Response, WebSocketFrame}
 
 import java.util.concurrent.ConcurrentLinkedQueue
 

@@ -1,4 +1,6 @@
-package websocket
+package server
+
+import server.websocket.{Method, Request}
 
 class Request(val method: Method, val uri: Uri, val postBody: Option[String]) {
   def as[A](implicit transf: String => A): A = transf(postBody.get)

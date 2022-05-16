@@ -1,4 +1,6 @@
-package websocket
+package server.websocket
+
+import server.{Response, WebSocketResponsePipe}
 
 import java.util.concurrent.ConcurrentLinkedQueue
 

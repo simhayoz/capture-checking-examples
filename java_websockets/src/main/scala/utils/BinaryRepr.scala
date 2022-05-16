@@ -1,4 +1,6 @@
-package websocket
+package utils
+
+import server.websocket.BinaryRepr
 
 class BinaryRepr(binary: String) {
   def toByte: Byte = Integer.parseInt(binary, 2).toByte

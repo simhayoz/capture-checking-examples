@@ -1,4 +1,4 @@
-package websocket
+package server
 
 trait IOApp {
 

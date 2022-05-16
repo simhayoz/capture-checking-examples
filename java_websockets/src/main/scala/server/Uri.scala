@@ -1,4 +1,7 @@
-package websocket
+package server
+
+import server.websocket.Uri
+import server.{Method, Request}
 
 class Uri(val path: String) {
   def combine(other: String): Uri = Uri(f"$path/$other")

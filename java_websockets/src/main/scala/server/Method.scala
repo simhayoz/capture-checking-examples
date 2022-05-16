@@ -1,4 +1,6 @@
-package websocket
+package server
+
+import server.websocket.Method
 
 enum Method(v: String):
   case GET extends Method("GET")

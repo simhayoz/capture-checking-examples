@@ -1,4 +1,6 @@
-package websocket
+package server
+
+import server.websocket.HttpRoutes
 
 class ServerBuilder {
 

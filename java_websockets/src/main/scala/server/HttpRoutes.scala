@@ -1,4 +1,6 @@
-package websocket
+package server
+
+import server.websocket.{NotFound, Request, Response}
 
 class HttpRoutes {
   var pf: PartialFunction[Request, Response] = null
