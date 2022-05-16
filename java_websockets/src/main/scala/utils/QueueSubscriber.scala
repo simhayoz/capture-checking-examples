@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * @param concurrentLinkedQueue the concurrent queue
  * @tparam A the type of the queue
  */
-class QueueSubscriber[A](val concurrentLinkedQueue: ConcurrentLinkedQueue[A]) {
+class QueueSubscriber[A](val concurrentLinkedQueue: {*} ConcurrentLinkedQueue[A]) {
   var subscribed = new AtomicBoolean(true)
 
   /**

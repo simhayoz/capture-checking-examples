@@ -59,7 +59,7 @@ class WebSocketExampleWithCCApp extends Dsl {
     val queueCapability: {*} ConcurrentLinkedQueue[WebSocketFrame] = null
     val openConnectionQueues: ListBuffer[{queueCapability} ConcurrentLinkedQueue[WebSocketFrame]] = ListBuffer[{queueCapability} ConcurrentLinkedQueue[WebSocketFrame]]()
     val bootstrap = "https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.css"
-    HttpRoutes().of {
+    HttpRoutes.of {
       case GET -> Root / "static" / filename =>
         StaticFile.fromPath(f"static/$filename")
 
@@ -87,16 +87,15 @@ class WebSocketExampleWithCCApp extends Dsl {
         else if (m.msg == "") Ok(Response(false, "Message cannot be empty").asJson, Header(ApplicationJson))
         else {
           messages = List(m) ++ messages
-          openConnectionQueues.map((s: {*} ConcurrentLinkedQueue[WebSocketFrame]) => s.offer(Text(messageList())))
+          openConnectionQueues.map((s: {queueCapability} ConcurrentLinkedQueue[WebSocketFrame]) => s.offer(Text(messageList())))
           Ok(Response(true, "").asJson, Header(ApplicationJson))
         }
 
       case GET -> Root / "subscribe" =>
-        val newQueue: ConcurrentLinkedQueue[WebSocketFrame] = new ConcurrentLinkedQueue[WebSocketFrame]()
-        val queueAsCapability: {queueCapability} ConcurrentLinkedQueue[WebSocketFrame] = newQueue // TODO use newQueue as capability directly
-        openConnectionQueues += queueAsCapability
-        val toClient: ConcurrentLinkedQueue[WebSocketFrame] = newQueue
-        val fromClient: Pipe[WebSocketFrame, Unit] = {
+        val newQueue: {queueCapability} ConcurrentLinkedQueue[WebSocketFrame] = new ConcurrentLinkedQueue[WebSocketFrame]()
+        openConnectionQueues += newQueue
+        val toClient: {newQueue} ConcurrentLinkedQueue[WebSocketFrame] = newQueue
+        val fromClient: {newQueue} Pipe[WebSocketFrame, Unit] = {
           case Text(t) => println(t)
           case Close(_) => openConnectionQueues -= newQueue
           case f => println(s"Unknown type: $f")

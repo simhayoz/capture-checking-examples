@@ -22,11 +22,11 @@ import scala.concurrent.Future
  * @param toClient   queue which will be updated with element to send to client
  * @param fromClient pipe to be called when new element are received from client
  */
-class WebSocketServerHandler(request: Request, client: Socket, in: InputStream, out: OutputStream, toClient: ConcurrentLinkedQueue[WebSocketFrame], fromClient: Pipe[WebSocketFrame, Unit]) {
+class WebSocketServerHandler(request: Request, client: Socket, in: InputStream, out: OutputStream, toClient: {*} ConcurrentLinkedQueue[WebSocketFrame], fromClient: {*} Pipe[WebSocketFrame, Unit]) {
   implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global
 
   val isClosed: AtomicBoolean = new AtomicBoolean(false)
-  val clientSubscriber: QueueSubscriber[WebSocketFrame] = QueueSubscriber(toClient)
+  val clientSubscriber: {*} QueueSubscriber[WebSocketFrame] = QueueSubscriber(toClient)
 
   /**
    * Handle the websocket protocol
@@ -37,9 +37,21 @@ class WebSocketServerHandler(request: Request, client: Socket, in: InputStream, 
     Future {
       clientSubscriber.onNewElement(e => sendToClient(e))
     }
-    Future {
-      _loopReceiveFromClient()
-    }
+    Future.unit.map(_ => while (!isClosed.get()) {
+      fromClient.apply(receiveFromClient)
+    })
+
+    // This is not working (even though the description of Future says they should be equivalent)
+    // Fails due to capture checking
+//     [error] 45 |    Future {
+//     [error]    |           ^
+//     [error]    |          Found:    {WebSocketServerHandler.this.fromClient} () ?-> Unit
+//     [error]    |          Required: () ?-> Unit
+//    Future {
+//      while (!isClosed.get()) {
+//        fromClient.apply(receiveFromClient)
+//      }
+//    }
 
   def _closeAndFreeResources(): Unit =
     clientSubscriber.unsubscribe()
@@ -48,10 +60,6 @@ class WebSocketServerHandler(request: Request, client: Socket, in: InputStream, 
     out.close()
     client.close()
 
-  def _loopReceiveFromClient(): Unit =
-    while (!isClosed.get()) {
-      fromClient.apply(receiveFromClient)
-    }
 
   /**
    * Send a text message to the client

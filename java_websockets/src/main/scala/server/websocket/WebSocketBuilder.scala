@@ -12,6 +12,6 @@ class WebSocketBuilder {
    * @param fromClient pipe to be called when new element are received from client
    * @return the websocket response
    */
-  def build(toClient: ConcurrentLinkedQueue[WebSocketFrame], fromClient: Pipe[WebSocketFrame, Unit]): Response =
+  def build(toClient: {*} ConcurrentLinkedQueue[WebSocketFrame], fromClient: {*} Pipe[WebSocketFrame, Unit]): {*} Response =
     WebSocketResponsePipe(toClient, fromClient)
 }

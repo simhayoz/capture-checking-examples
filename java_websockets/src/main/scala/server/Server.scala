@@ -14,7 +14,7 @@ import scala.collection.mutable
  * @param pf   the partial function to be applied when receiving a new request
  * @param port the port to listen from
  */
-class Server(pf: PartialFunction[Request, Response], port: Int) {
+class Server(pf: PartialFunction[Request, {*} Response], port: Int) {
   val server: ServerSocket = ServerSocket(port)
 
   /**

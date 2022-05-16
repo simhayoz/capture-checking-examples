@@ -29,4 +29,4 @@ case class Ok(override val body: String, override val header: Header) extends Re
 
 case class NotFound(override val body: String) extends Response((404, "Not Found"), "HTTP/1.1", Header(TextPlain), body)
 
-case class WebSocketResponsePipe(toClient: ConcurrentLinkedQueue[WebSocketFrame], fromClient: PartialFunction[WebSocketFrame, Unit]) extends Response((200, "OK"), "HTTP/1.1", NoHeader(), "")
+case class WebSocketResponsePipe(toClient: {*} ConcurrentLinkedQueue[WebSocketFrame], fromClient: {*} Pipe[WebSocketFrame, Unit]) extends Response((200, "OK"), "HTTP/1.1", NoHeader(), "")
