@@ -3,6 +3,12 @@ package utils
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 
+/**
+ * Concurrent queue wrapper to trigger events on new element
+ *
+ * @param concurrentLinkedQueue the concurrent queue
+ * @tparam A the type of the queue
+ */
 class QueueSubscriber[A](val concurrentLinkedQueue: ConcurrentLinkedQueue[A]) {
   var subscribed = new AtomicBoolean(true)
 

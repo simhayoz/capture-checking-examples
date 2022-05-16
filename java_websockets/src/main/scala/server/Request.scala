@@ -1,6 +1,13 @@
 package server
 
-class Request(val method: Method, val uri: Uri, val postBody: Option[String]) {
+/**
+ * Represents a request done by the client to this server
+ *
+ * @param method   the method type
+ * @param uri      the uri of the request
+ * @param postBody the body of the request in case of POST method
+ */
+class Request(val method: Method, val uri: Uri, val postBody: Option[String]) { // TODO add header here for server simplification
   /**
    * Transform the json string representation of an object to the object
    *

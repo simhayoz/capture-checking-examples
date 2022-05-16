@@ -2,6 +2,11 @@ package server
 
 import server.{Method, Request}
 
+/**
+ * Represents the path to a request
+ *
+ * @param path string representation of the path
+ */
 class Uri(val path: String) {
   /**
    * Combine this uri with a new part of the path
