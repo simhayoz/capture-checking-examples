@@ -118,7 +118,7 @@ class WebSocketExampleWithCCApp[F[_]](implicit F: Async[F]) extends Http4sDsl[F]
           else {
             messages = List(m) ++ messages
             for {
-              _ <- openConnectionQueues.map((s: {*} Queue[F, Option[String]]) => s.offer(Some(messageList().render))).toScalaList.sequence
+              _ <- openConnectionQueues.map((s: {queueCapability} Queue[F, Option[String]]) => s.offer(Some(messageList().render))).toScalaList.sequence
               res <- Ok(Response(true, "").asJson)
             } yield res
           }
