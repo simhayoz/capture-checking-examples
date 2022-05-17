@@ -28,13 +28,13 @@ class TestTemp {
 // -------------------------------------------------------------
 // Initial reduction
 // class TestTemp {
-//   def testFunction: PartialFunction[Int, {*} Int] = {
+//   def testFunction: PartialFunction[Int, {*} String] = {
 //     case t if t == 3 =>
-//       val tt: {*} Int = 3
+//       val tt: {*} String = "3"
 //       tt
 
 //     case t if t == 5 =>
-//       val tt: {*} Int = 5
+//       val tt: {*} String = "5"
 //       tt
 //   }
 // }
