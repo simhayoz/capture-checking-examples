@@ -1,13 +1,15 @@
-import websocket.{Close, Dsl, Header, HttpRoutes, IOApp, Method, Ok, Pipe, Request, ServerBuilder, StaticFile, Text, Uri, WebSocketBuilder, WebSocketFrame}
-import websocket.Method.*
-import websocket.ContentType.*
 
-import java.util.concurrent.ConcurrentLinkedQueue
+import server.{Dsl, ExitCode, Header, HttpRoutes, IOApp, Method, Ok, Pipe, Request, ServerBuilder, StaticFile, Uri}
+import server.websocket.{Close, Text, WebSocketBuilder, WebSocketFrame}
+import server.Method.*
+import server.ContentType.*
+
+import java.util.concurrent.{ConcurrentLinkedDeque, ConcurrentLinkedQueue}
 import scala.collection.mutable
 
 object WebSocketExampleWithCC extends IOApp {
-  override def run(args: List[String]): Int =
-    new WebSocketExampleWithCCApp().stream.last
+  override def run(args: List[String]): ExitCode =
+    new WebSocketExampleWithCCApp().stream.getLast
 }
 
 class WebSocketExampleWithCCApp extends Dsl {
@@ -54,14 +56,14 @@ class WebSocketExampleWithCCApp extends Dsl {
   }
 
   def routes(wsb: WebSocketBuilder): HttpRoutes =
-    val queueCapability: {*} LazyList[String] = null
+    val queueCapability: {*} ConcurrentLinkedQueue[WebSocketFrame] = null
     val openConnectionQueues: ListBuffer[{queueCapability} ConcurrentLinkedQueue[WebSocketFrame]] = ListBuffer[{queueCapability} ConcurrentLinkedQueue[WebSocketFrame]]()
     val bootstrap = "https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.css"
-    HttpRoutes().of {
-      case Request(GET, Uri("/static/app.js"), None) => // TODO filename should be string
-        StaticFile.fromPath("static/app.js")
+    HttpRoutes.of(_ match {
+      case GET -> Root / "static" / filename =>
+        StaticFile.fromPath(f"static/$filename")
 
-      case Request(GET, Uri("/"), None) =>
+      case GET -> Root =>
         val htmlContent = s"""<!DOCTYPE html>
                             |<html>
                             |<head>
@@ -79,34 +81,31 @@ class WebSocketExampleWithCCApp extends Dsl {
                             |</html>""".stripMargin
         Ok(htmlContent, Header(TextHtml))
 
-      case req@Request(POST, Uri("/"), Some(_)) =>
+      case req@POST -> Root =>
         val m: Message = req.as[Message]
         if (m.name == "") Ok(Response(false, "Name cannot be empty").asJson, Header(ApplicationJson))
         else if (m.msg == "") Ok(Response(false, "Message cannot be empty").asJson, Header(ApplicationJson))
         else {
           messages = List(m) ++ messages
-          openConnectionQueues.map((s: {*} ConcurrentLinkedQueue[WebSocketFrame]) => s.offer(Text(messageList())))
+          openConnectionQueues.map((s: {queueCapability} ConcurrentLinkedQueue[WebSocketFrame]) => s.offer(Text(messageList())))
           Ok(Response(true, "").asJson, Header(ApplicationJson))
         }
 
-      case Request(GET, Uri("/subscribe"), None) =>
-        val newQueue: ConcurrentLinkedQueue[WebSocketFrame] = new ConcurrentLinkedQueue[WebSocketFrame]()
-        val queueAsCapability: {queueCapability} ConcurrentLinkedQueue[WebSocketFrame] = newQueue // TODO use newQueue as capability directly
-        openConnectionQueues += queueAsCapability
-        val toClient: ConcurrentLinkedQueue[WebSocketFrame] = newQueue
-        val fromClient: Pipe[WebSocketFrame, Unit] = {
+      case GET -> Root / "subscribe" =>
+        val newQueue: {queueCapability} ConcurrentLinkedQueue[WebSocketFrame] = new ConcurrentLinkedQueue[WebSocketFrame]()
+        openConnectionQueues += newQueue
+        val toClient: {newQueue} ConcurrentLinkedQueue[WebSocketFrame] = newQueue
+        val fromClient: {newQueue} Pipe[WebSocketFrame, Unit] = {
           case Text(t) => println(t)
           case Close(_) => openConnectionQueues -= newQueue
           case f => println(s"Unknown type: $f")
         }
         wsb.build(toClient, fromClient)
-    }
+    })
 
   def messageList(): String = messages.reverse.map(m => s"<p><b>${m.name}</b> ${m.msg}</p>").mkString
 
-  def stream: LazyList[Int] =
-    ServerBuilder()
-      .bindHttp(8080)
-      .withHttpWebSocketApp(routes(WebSocketBuilder()).orNotFound)
+  def stream: ConcurrentLinkedDeque[ExitCode] =
+    ServerBuilder(8080, routes(WebSocketBuilder()).orNotFound())
       .serve
 }
