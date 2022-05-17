@@ -1,17 +1,21 @@
 package server
 
-class HttpRoutes(val pf: Request => {*} Response) {
+import annotation.capability
+
+@capability class HttpRoutes(val pf: Request => {*} Response) {
   /**
    * Add default not found case for partial function
    *
    * @return the HttpRoutes
    */
-  def orNotFound: {pf} HttpRoutes = {
-    // TODO find a way to fix this
-//    this.pf = this.pf.orElse({
-//      case _ => NotFound("Not Found")
-//    })
-    this
+  def orNotFound(): HttpRoutes = { // Only works with ()
+    HttpRoutes.of(r => {
+      try {
+        this.pf(r)
+      } catch {
+        case _: MatchError => NotFound(f"Not Found: ${r.uri}")
+      }
+    })
   }
 }
 
@@ -22,6 +26,6 @@ object HttpRoutes {
    * @param pf a partial function from request to response
    * @return the HttpRoutes
    */
-  def of(pf: Request => {*} Response): {pf} HttpRoutes =
+  def of(pf: Request => {*} Response): HttpRoutes =
     HttpRoutes(pf)
 }

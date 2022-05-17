@@ -55,7 +55,7 @@ class WebSocketExampleWithCCApp extends Dsl {
       f"{\"success\": $success, \"err\": \"$err\"}"
   }
 
-  def routes(wsb: WebSocketBuilder): {*} HttpRoutes =
+  def routes(wsb: WebSocketBuilder): HttpRoutes =
     val queueCapability: {*} ConcurrentLinkedQueue[WebSocketFrame] = null
     val openConnectionQueues: ListBuffer[{queueCapability} ConcurrentLinkedQueue[WebSocketFrame]] = ListBuffer[{queueCapability} ConcurrentLinkedQueue[WebSocketFrame]]()
     val bootstrap = "https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.css"
@@ -106,6 +106,6 @@ class WebSocketExampleWithCCApp extends Dsl {
   def messageList(): String = messages.reverse.map(m => s"<p><b>${m.name}</b> ${m.msg}</p>").mkString
 
   def stream: ConcurrentLinkedDeque[ExitCode] =
-    ServerBuilder(8080, routes(WebSocketBuilder())) // TODO fix .orNotFound
+    ServerBuilder(8080, routes(WebSocketBuilder()).orNotFound())
       .serve
 }

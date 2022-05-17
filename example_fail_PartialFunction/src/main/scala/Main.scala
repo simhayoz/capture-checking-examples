@@ -67,3 +67,12 @@ class TestTemp {
 // [error]     return[matchResult2] default.apply(x)
 // [error]   }
 
+
+// Another error:
+// [error] -- Error: /home/simon/capture-checking-examples/java_websockets/src/main/scala/WebSocketExampleWithCC.scala:109:17 
+// [error] 109 |    ServerBuilder(8080, routes(WebSocketBuilder()).orNotFound)
+// [error]     |                 ^
+// [error]     |    cannot establish a reference to ({*} server.HttpRoutes)#orNotFound
+// [error] one error found
+// [error] (Compile / compileIncremental) Compilation failed
+// [error] Total time: 1 s, completed May 17, 2022, 8:33:05 AM

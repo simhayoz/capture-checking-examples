@@ -2,7 +2,7 @@ package server
 
 import java.util.concurrent.ConcurrentLinkedDeque
 
-class ServerBuilder(val port: Int, val routes: {*} HttpRoutes) {
+class ServerBuilder(val port: Int, val routes: HttpRoutes) {
 
   /**
    * Bind to http
@@ -18,7 +18,7 @@ class ServerBuilder(val port: Int, val routes: {*} HttpRoutes) {
    * @param routes the http/websocket routes
    * @return this
    */
-  def withHttpWebSocketApp(routes: {*} HttpRoutes): {routes} ServerBuilder = ServerBuilder(this.port, routes)
+  def withHttpWebSocketApp(routes: HttpRoutes): {routes} ServerBuilder = ServerBuilder(this.port, routes)
 
   /**
    * Build the server and run it
@@ -34,5 +34,5 @@ class ServerBuilder(val port: Int, val routes: {*} HttpRoutes) {
 }
 
 object ServerBuilder {
-  def apply(port: Int, routes: {*} HttpRoutes): {routes} ServerBuilder = new ServerBuilder(port, routes)
+  def apply(port: Int, routes: HttpRoutes): {routes} ServerBuilder = new ServerBuilder(port, routes)
 }
