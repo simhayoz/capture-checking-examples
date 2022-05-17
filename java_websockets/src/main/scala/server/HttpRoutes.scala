@@ -2,7 +2,7 @@ package server
 
 import annotation.capability
 
-@capability class HttpRoutes(val pf: Request => {*} Response) {
+@capability class HttpRoutes(val pf: Request => Response) {
   /**
    * Add default not found case for partial function
    *
@@ -26,6 +26,6 @@ object HttpRoutes {
    * @param pf a partial function from request to response
    * @return the HttpRoutes
    */
-  def of(pf: Request => {*} Response): HttpRoutes =
+  def of(pf: Request => Response): HttpRoutes =
     HttpRoutes(pf)
 }

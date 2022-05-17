@@ -8,7 +8,7 @@ lazy val root = project
 
     scalaVersion := scala3Version,
 
-    scalacOptions ++= Seq("-Ycc"),
+    scalacOptions ++= Seq("-Ycc"), // , "-feature", "-deprecation"
 
     libraryDependencies ++= Seq("org.scalameta" %% "munit" % "0.7.29" % Test),
 

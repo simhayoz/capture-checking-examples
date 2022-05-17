@@ -14,9 +14,9 @@ object StaticFile {
    * @param path the path to a file
    * @return the response containing the content of the file @ path
    */
-  def fromPath(path: String): {*} Response = {
+  def fromPath(path: String): Response = {
     val f = Source.fromFile(path, "UTF-8")
-    val res: {*} Response = Ok(f.mkString, Header(ApplicationJavascript))
+    val res: Response = Ok(f.mkString, Header(ApplicationJavascript))
     f.close()
     res
   }

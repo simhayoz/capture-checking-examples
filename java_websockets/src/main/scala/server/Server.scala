@@ -8,13 +8,15 @@ import java.net.{ServerSocket, Socket}
 import java.util.Scanner
 import scala.collection.mutable
 
+import annotation.capability
+
 /**
  * Server that handles request
  *
  * @param pf   the partial function to be applied when receiving a new request
  * @param port the port to listen from
  */
-class Server(pf: Request => {*} Response, port: Int) {
+@capability class Server(pf: Request => Response, port: Int) {
   val server: ServerSocket = ServerSocket(port)
 
   /**
@@ -39,7 +41,7 @@ class Server(pf: Request => {*} Response, port: Int) {
       case GET =>
         Request(method, Uri(firstLine.tail.head), headers, None)
     }
-    pf(request) match { // TODO or else: , r => NotFound("Not Found: " + r.uri.path)
+    pf(request) match {
       case WebSocketResponsePipe(toClient, fromClient) =>
         WebSocketServerHandler(request, client, in, out, toClient, fromClient).handle()
         0

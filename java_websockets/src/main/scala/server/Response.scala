@@ -3,6 +3,8 @@ package server
 import server.ContentType.*
 import server.websocket.WebSocketFrame
 
+import annotation.capability
+
 import java.util.concurrent.ConcurrentLinkedQueue
 
 type Pipe[A, B] = PartialFunction[A, B]
@@ -15,7 +17,7 @@ type Pipe[A, B] = PartialFunction[A, B]
  * @param header      the header of the response
  * @param body        the body of the response
  */
-class Response(val status: (Int, String), val httpVersion: String, val header: Header, val body: String) {
+@capability class Response(val status: (Int, String), val httpVersion: String, val header: Header, val body: String) {
   /**
    * Create a new response to be sent through the connection
    *
