@@ -1,6 +1,6 @@
 
-import server.{Dsl, ExitCode, Header, HttpRoutes, IOApp, Method, Ok, Pipe, Request, ServerBuilder, StaticFile, Uri}
-import server.websocket.{Close, Text, WebSocketBuilder, WebSocketFrame}
+import server.{Dsl, ExitCode, Header, HttpRoutes, IOApp, Method, Ok, Pipe, Request, Response, ServerBuilder, StaticFile, Uri, WebSocketResponsePipe}
+import server.websocket.{Close, Text, WebSocketFrame}
 import server.Method.*
 import server.ContentType.*
 
@@ -50,45 +50,45 @@ class WebSocketExampleWithCCApp extends Dsl {
       case _ => throw new RuntimeException("Cannot parse message")
     }
   }
-  case class Response(success: Boolean, err: String) {
+  case class Resp(success: Boolean, err: String) {
     def asJson: String =
       f"{\"success\": $success, \"err\": \"$err\"}"
   }
 
-  def routes(wsb: WebSocketBuilder): HttpRoutes =
+  def routes(): HttpRoutes =
     val queueCapability: {*} ConcurrentLinkedQueue[WebSocketFrame] = null
     val openConnectionQueues: ListBuffer[{queueCapability} ConcurrentLinkedQueue[WebSocketFrame]] = ListBuffer[{queueCapability} ConcurrentLinkedQueue[WebSocketFrame]]()
     val bootstrap = "https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.css"
-    HttpRoutes.of(_ match {
+    HttpRoutes.of(queueCapability, {
       case GET -> Root / "static" / filename =>
         StaticFile.fromPath(f"static/$filename")
 
       case GET -> Root =>
         val htmlContent = s"""<!DOCTYPE html>
-                            |<html>
-                            |<head>
-                            |    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.css"/>
-                            |    <script src="/static/app.js"></script>
-                            |</head>
-                            |<body>
-                            |<div class="container"><h1>Scala Chat!</h1>
-                            |    <div id="messageList">${messageList()}</div>
-                            |    <div id="errorDiv" style="color: red;"></div>
-                            |    <form onsubmit="submitForm(); return false"><input type="text" id="nameInput" placeholder="User name"/><input
-                            |            type="text" id="msgInput" placeholder="Write a message!"/><input type="submit"/></form>
-                            |</div>
-                            |</body>
-                            |</html>""".stripMargin
+                             |<html>
+                             |<head>
+                             |    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.css"/>
+                             |    <script src="/static/app.js"></script>
+                             |</head>
+                             |<body>
+                             |<div class="container"><h1>Scala Chat!</h1>
+                             |    <div id="messageList">${messageList()}</div>
+                             |    <div id="errorDiv" style="color: red;"></div>
+                             |    <form onsubmit="submitForm(); return false"><input type="text" id="nameInput" placeholder="User name"/><input
+                             |            type="text" id="msgInput" placeholder="Write a message!"/><input type="submit"/></form>
+                             |</div>
+                             |</body>
+                             |</html>""".stripMargin
         Ok(htmlContent, Header(TextHtml))
 
       case req@POST -> Root =>
         val m: Message = req.as[Message]
-        if (m.name == "") Ok(Response(false, "Name cannot be empty").asJson, Header(ApplicationJson))
-        else if (m.msg == "") Ok(Response(false, "Message cannot be empty").asJson, Header(ApplicationJson))
+        if (m.name == "") Ok(Resp(false, "Name cannot be empty").asJson, Header(ApplicationJson))
+        else if (m.msg == "") Ok(Resp(false, "Message cannot be empty").asJson, Header(ApplicationJson))
         else {
           messages = List(m) ++ messages
           openConnectionQueues.map((s: {queueCapability} ConcurrentLinkedQueue[WebSocketFrame]) => s.offer(Text(messageList())))
-          Ok(Response(true, "").asJson, Header(ApplicationJson))
+          Ok(Resp(true, "").asJson, Header(ApplicationJson))
         }
 
       case GET -> Root / "subscribe" =>
@@ -96,16 +96,16 @@ class WebSocketExampleWithCCApp extends Dsl {
         openConnectionQueues += newQueue
         val toClient: {newQueue} ConcurrentLinkedQueue[WebSocketFrame] = newQueue
         val fromClient: {newQueue} Pipe[WebSocketFrame, Unit] = {
-          case Text(t) => println(t)
-          case Close(_) => openConnectionQueues -= newQueue
-          case f => println(s"Unknown type: $f")
-        }
-        wsb.build(toClient, fromClient)
+        case Text(t) => println(t)
+        case Close(_) => openConnectionQueues -= newQueue
+        case f => println(s"Unknown type: $f")
+      }
+        WebSocketResponsePipe(toClient, fromClient)
     })
 
   def messageList(): String = messages.reverse.map(m => s"<p><b>${m.name}</b> ${m.msg}</p>").mkString
 
   def stream: ConcurrentLinkedDeque[ExitCode] =
-    ServerBuilder(8080, routes(WebSocketBuilder()).orNotFound())
+    ServerBuilder(8080, routes().orNotFound())
       .serve
 }

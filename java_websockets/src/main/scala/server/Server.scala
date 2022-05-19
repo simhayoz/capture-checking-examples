@@ -16,7 +16,7 @@ import annotation.capability
  * @param pf   the partial function to be applied when receiving a new request
  * @param port the port to listen from
  */
-@capability class Server(pf: Request => Response, port: Int) {
+@capability class Server(pf: PartialFunction[Request, {*} Response], port: Int) {
   val server: ServerSocket = ServerSocket(port)
 
   /**
