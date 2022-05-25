@@ -59,8 +59,6 @@ abstract class SQLQuery[A, B](dataTable: DataTable[A]) {
  * @tparam A the type of the element in this Query
  */
 abstract class PipelinedQuery[A](dataTable: DataTable[A]) extends SQLQuery[A, List[A]](dataTable) {
-  this: {*} PipelinedQuery[A] =>
-
   /**
    * Create a new take query taking n elements from a previous query
    *

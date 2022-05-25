@@ -49,17 +49,9 @@ object QueriesWithCC {
     src.close()
   }
 
-  @main def qsWithCC() = runQueries(ctx => assert(
-    pprint.log(ctx.run[City, List[City]](query[City].take(4))) ==
-      List(
-        City(1, "Kabul", "AFG", "Kabol", 1780000),
-        City(2, "Qandahar", "AFG", "Qandahar", 237500),
-        City(3, "Herat", "AFG", "Herat", 186800),
-        City(4, "Mazar-e-Sharif", "AFG", "Balkh", 127800),
-      )
-  ))
+  @main def qsWithCC() = runQueries
 
-  def runQueries(andMore: Connection => Unit): Unit = {
+  def runQueries: Unit = {
     // Load driver
     classOf[org.postgresql.Driver].getDeclaredConstructor().newInstance()
 
@@ -72,7 +64,7 @@ object QueriesWithCC {
       case e: SQLException => throw RuntimeException(e.getMessage)
     }
     createDBFromFile("world.sql", ctx)
-    andMore(ctx)
+
     assert(
       pprint.log(ctx.run[City, List[City]](query[City].take(4))) ==
         List(
