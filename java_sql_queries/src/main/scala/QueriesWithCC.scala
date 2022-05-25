@@ -201,6 +201,7 @@ object QueriesWithCC {
           City(10000, "testford", "TST", "Test Borough", 0)
         )
     )
+    ctx.close()
   }
 }
 
