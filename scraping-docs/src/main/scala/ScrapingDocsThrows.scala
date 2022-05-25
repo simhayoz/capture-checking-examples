@@ -16,13 +16,12 @@ object ScrapingDocsThrows {
     }
     newList
 
-  def javaExceptionWrapper[A, E <: Exception](f: Unit => A): {f} A throws E = {
+  def javaExceptionWrapper[A, E <: Exception](f: Unit => A): {f} A throws E =
     try {
       f(())
     } catch {case (e: E) => throw e}
-  }
 
-  def main(args: Array[String]) = {
+  def main(args: Array[String]): Unit = {
     val indexDoc: nodes.Document = Jsoup.connect("https://developer.mozilla.org/en-US/docs/Web/API").get()
     val links: List[nodes.Element] = fromMutableBuffer(indexDoc.select("h2#interfaces").nextAll.select("div.index a").asScala)
     val linkData: List[(String, String, String)] = links.map(link => (link.attr("href"), link.attr("title"), link.text))
