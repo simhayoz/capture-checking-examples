@@ -1,4 +1,4 @@
-object BugExample {
+object ClosureExampleBug {
   val urls: List[String] = List("any_url")
   val closures: List[Unit => Unit] =
     urls.map(url => _ => {
