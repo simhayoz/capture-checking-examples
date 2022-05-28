@@ -32,6 +32,8 @@ class WebSocketServerHandler(request: Request, client: Socket, in: InputStream, 
 
   /**
    * Handle the websocket protocol
+   * @throws UnknownWebSocketFrameException
+   * @throws UnsupportedWebSocketOperationException
    */
   def handle(): {*} Unit throws UnknownWebSocketFrameException | UnsupportedWebSocketOperationException =
     val response = ("HTTP/1.1 101 Switching Protocols\r\n" + "Connection: Upgrade\r\n" + "Upgrade: websocket\r\n" + "Sec-WebSocket-Accept: " + Base64.getEncoder.encodeToString(MessageDigest.getInstance("SHA-1").digest((request.headers("Sec-WebSocket-Key") + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").getBytes("UTF-8"))) + "\r\n\r\n").getBytes("UTF-8")
@@ -60,6 +62,7 @@ class WebSocketServerHandler(request: Request, client: Socket, in: InputStream, 
    * Send a text message to the client
    *
    * @param msg the message to send
+   * @throws UnknownWebSocketFrameException on unknown websocket frame
    */
   def sendToClient(wsf: WebSocketFrame): Unit throws UnknownWebSocketFrameException =
     wsf match {
@@ -81,6 +84,8 @@ class WebSocketServerHandler(request: Request, client: Socket, in: InputStream, 
    * Blocking method that wait for a message from the client
    *
    * @return the message received by the client
+   * @throws UnknownWebSocketFrameException         if it receives an unknown websocket frame
+   * @throws UnsupportedWebSocketOperationException if the websocket protocol received is unknown from this server
    */
   def receiveFromClient: WebSocketFrame throws UnknownWebSocketFrameException | UnsupportedWebSocketOperationException = {
     if (in.available() == 0) {
