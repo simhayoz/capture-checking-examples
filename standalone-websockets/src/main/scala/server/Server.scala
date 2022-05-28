@@ -7,8 +7,16 @@ import java.io.{BufferedReader, InputStream, InputStreamReader, OutputStream}
 import java.net.{ServerSocket, Socket}
 import java.util.Scanner
 import scala.collection.mutable
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
+import utils.{UnknownWebSocketFrameException, UnsupportedWebSocketOperationException}
 
+import java.util.concurrent.ConcurrentLinkedDeque
 import annotation.capability
+
+// Use safer exceptions
+import language.experimental.saferExceptions
 
 /**
  * Server that handles request
@@ -24,7 +32,7 @@ import annotation.capability
    *
    * @return the return code of handling the new request
    */
-  def listenOnNewRequests: Int =
+  def listenOnNewRequests(queue: ConcurrentLinkedDeque[Int]): Unit =
     val client: Socket = server.accept()
     val in = client.getInputStream
     val out = client.getOutputStream
@@ -43,13 +51,25 @@ import annotation.capability
     }
     pf(request) match {
       case WebSocketResponsePipe(toClient, fromClient) =>
-        WebSocketServerHandler(request, client, in, out, toClient, fromClient).handle()
-        0
+        Future.unit.map(_ =>
+          val wssh: {toClient, fromClient} WebSocketServerHandler = WebSocketServerHandler(request, client, in, out, toClient, fromClient)
+          try {
+            wssh.handle()
+            queue.add(0)
+          } catch {
+            case _: UnknownWebSocketFrameException =>
+              wssh.closeAndFreeResources()
+              queue.add(1)
+            case _: UnsupportedWebSocketOperationException =>
+              wssh.closeAndFreeResources()
+              queue.add(2)
+          }
+        )
       case rep =>
         out.write(rep.createResponse)
         s.close()
         client.close()
-        0
+        queue.add(0)
     }
 
   def _buildHeaders(s: BufferedReader): RequestHeader = {

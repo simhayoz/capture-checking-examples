@@ -28,8 +28,9 @@ class ServerBuilder(val port: Int, val routes: HttpRoutes) {
   def serve: ConcurrentLinkedDeque[Int] =
     val queue: ConcurrentLinkedDeque[Int] = new ConcurrentLinkedDeque()
     val server = Server(this.routes.pf, port)
-    while (true)
-      queue.add(server.listenOnNewRequests)
+    while (true) {
+      server.listenOnNewRequests(queue)
+    }
     queue
 }
 
