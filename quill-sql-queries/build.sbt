@@ -3,7 +3,7 @@ val scala3Version = "3.2.0-RC1-bin-SNAPSHOT"
 lazy val root = project
   .in(file("."))
   .settings(
-    name := "queries",
+    name := "quill-sql-queries",
     version := "0.1.0-SNAPSHOT",
 
     scalacOptions ++= Seq("-Ycc"),
