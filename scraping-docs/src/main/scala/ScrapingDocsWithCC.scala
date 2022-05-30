@@ -2,7 +2,7 @@ import org.jsoup._
 import collection.JavaConverters._
 import java.io.IOException
 
-object ScrapingDocs {
+object ScrapingDocsWithCC {
   import language.experimental.saferExceptions
 
   import colltest5.strawman.collections.*

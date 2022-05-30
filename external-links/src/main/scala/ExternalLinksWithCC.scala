@@ -2,7 +2,7 @@ import org.jsoup._
 import collection.JavaConverters._
 import language.experimental.saferExceptions
 
-object ExternalLinks {
+object ExternalLinksWithCC {
 
   import colltest5.strawman.collections.*
   import CollectionStrawMan5.*
