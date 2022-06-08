@@ -58,11 +58,7 @@ object QueriesWithCC {
     val url = "jdbc:postgresql://localhost:5432/postgres"
     val user = "postgres"
     val password = "postgres"
-    val ctx: {*} Connection = try {
-      DriverManager.getConnection(url, user, password)
-    } catch {
-      case e: SQLException => throw RuntimeException(e.getMessage)
-    }
+    val ctx: {*} Connection = DriverManager.getConnection(url, user, password)
     createDBFromFile("world.sql", ctx)
 
     assert(
